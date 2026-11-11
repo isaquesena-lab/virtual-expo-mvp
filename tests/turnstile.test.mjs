@@ -126,6 +126,33 @@ test("local submissions still work without a secret or token", async (t) => {
   assert.equal(fetchMock.mock.callCount(), 0);
 });
 
+test("a YouTube Live booth stores its selected meeting type", async () => {
+  const db = database();
+  const response = await app.request("https://wetexpo.prohound.io/api/booths", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...payload,
+      meeting_type: "youtube_live",
+      meet_url: "https://www.youtube.com/watch?v=live-stream-id",
+    }),
+  }, { SUBMIT_LIMITER: { limit: async () => ({ success: true }) }, DB: db });
+  assert.equal(response.status, 201);
+  assert.equal(db.writes.length, 1);
+  assert.ok(db.writes[0].values.includes("youtube_live"));
+});
+
+test("meeting providers cannot be mixed", async () => {
+  const db = database();
+  const response = await app.request("https://wetexpo.prohound.io/api/booths", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...payload, meeting_type: "youtube_live" }),
+  }, { SUBMIT_LIMITER: { limit: async () => ({ success: true }) }, DB: db });
+  assert.equal(response.status, 422);
+  assert.equal(db.writes.length, 0);
+});
+
 test("rate-limited submissions are rejected before Siteverify or database access", async (t) => {
   const fetchMock = t.mock.method(globalThis, "fetch", () => { throw new Error("Must not verify blocked requests"); });
   const response = await submit({

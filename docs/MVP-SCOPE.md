@@ -10,7 +10,7 @@
 - Verified anti-bot token and server-side input validation.
 - Pending approval by default; moderator-only publish/unpublish.
 - Capability-based editing using a private, unpredictable token, stored hashed.
-- Outbound Google Meet link opened in a new tab with noreferrer/noopener.
+- Outbound Google Meet or YouTube Live link opened in a new tab with noreferrer/noopener.
 - Responsive layout, loading/empty/error states, basic SEO metadata.
 - Privacy notice, contact for corrections/removal, and no official affiliation claim.
 
