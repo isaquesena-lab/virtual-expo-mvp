@@ -171,19 +171,21 @@ export async function adminUpdateBooth(
 
 /* ------------------------------ Live presence ----------------------------- */
 
-export async function sendLiveHeartbeat(id: string, token: string): Promise<void> {
+/** Go live for `minutes` (server clamps to 5..240). Returns the new live_until (unix seconds). */
+export async function goLive(id: string, token: string, minutes: number): Promise<number> {
   const res = await fetch(`/api/booths/${encodeURIComponent(id)}/live`, {
     method: "POST",
+    headers: { "x-edit-token": token, "Content-Type": "application/json" },
+    body: JSON.stringify({ minutes }),
+  });
+  const data = await parse<{ live_until: number }>(res);
+  return data.live_until;
+}
+
+export async function goOffline(id: string, token: string): Promise<void> {
+  const res = await fetch(`/api/booths/${encodeURIComponent(id)}/live`, {
+    method: "DELETE",
     headers: { "x-edit-token": token },
   });
   await parse<{ live: boolean }>(res);
-}
-
-/** keepalive lets this finish while the tab is closing. */
-export function goOffline(id: string, token: string): Promise<Response> {
-  return fetch(`/api/booths/${encodeURIComponent(id)}/live`, {
-    method: "DELETE",
-    headers: { "x-edit-token": token },
-    keepalive: true,
-  });
 }
