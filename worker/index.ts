@@ -28,13 +28,14 @@ const LIVE_TTL_SECONDS = 90;
 
 const app = new Hono<{ Bindings: Env }>();
 
-const json = (data: unknown, status = 200) =>
+const json = (data: unknown, status = 200, headers?: Record<string, string>) =>
   Response.json(data as Record<string, unknown>, {
     status,
     headers: {
       // API responses are per-request and may include private data; never cache.
       "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff",
+      ...headers,
     },
   });
 
@@ -68,7 +69,8 @@ app.get("/api/booths", async (c) => {
   // Live booths first, then alphabetical.
   const sql = `SELECT ${PUBLIC_COLUMNS} FROM booths WHERE ${where.join(" AND ")} ORDER BY is_live DESC, company_name COLLATE NOCASE ASC`;
   const { results } = await c.env.DB.prepare(sql).bind(...binds).all();
-  return json({ booths: results });
+  // Public, non-sensitive list: allow a short CDN cache to absorb polling traffic.
+  return json({ booths: results }, 200, { "Cache-Control": "public, max-age=15" });
 });
 
 // Public client config (no secrets). The Turnstile site key is public by design.
@@ -317,6 +319,9 @@ app.get("/api/booths/:id/logo", async (c) => {
 // Upload/replace the logo (raw image bytes in the body). Owner only.
 app.put("/api/booths/:id/logo", async (c) => {
   const id = c.req.param("id");
+  // Per-IP rate limit: uploads store base64 blobs in D1, so throttle abuse early.
+  const { success } = await c.env.MUTATE_LIMITER.limit({ key: `mutate:${c.req.header("cf-connecting-ip") ?? "anon"}` });
+  if (!success) return json({ error: "Too many requests. Please slow down." }, 429);
   const denied = await checkOwner(c, id);
   if (denied) return denied;
 
@@ -354,6 +359,9 @@ app.delete("/api/booths/:id/logo", async (c) => {
 // Live presence heartbeat. Requires the owner token; only approved booths can go live.
 app.post("/api/booths/:id/live", async (c) => {
   const id = c.req.param("id");
+  // Per-IP rate limit: the heartbeat is a 30s polling write; throttle abusive clients.
+  const { success } = await c.env.MUTATE_LIMITER.limit({ key: `mutate:${c.req.header("cf-connecting-ip") ?? "anon"}` });
+  if (!success) return json({ error: "Too many requests. Please slow down." }, 429);
   const token = c.req.header("x-edit-token") ?? "";
   if (!token) return json({ error: "Missing edit token" }, 401);
   const row = await c.env.DB.prepare("SELECT edit_token_hash, status FROM booths WHERE id = ?")
