@@ -29,6 +29,9 @@ export function Layout({ children }: { children: ReactNode }) {
                 My booth
               </a>
             )}
+            <NavLink to="/account" className={navClass}>
+              My stands
+            </NavLink>
             <NavLink
               to="/register"
               className="rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-fuchsia-500/20 transition hover:brightness-110"

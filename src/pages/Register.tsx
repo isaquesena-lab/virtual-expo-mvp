@@ -331,7 +331,9 @@ export function Register() {
           {submitting ? "Submitting…" : "Submit for review"}
         </button>
         <p className="text-xs text-slate-500">
-          By submitting you confirm you represent this company and that the meeting link is yours.
+          By submitting you confirm you represent this company and that the meeting link is yours. Approved booths
+          stay public for 30 days and can be renewed from your account or edit link; unreviewed submissions expire
+          after 7 days and release their stand.
         </p>
       </form>
     </div>

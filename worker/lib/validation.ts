@@ -79,7 +79,7 @@ export type EditBoothInput = z.infer<typeof editBoothSchema>;
  */
 export const adminUpdateSchema = z
   .object({
-    status: z.enum(["pending", "approved", "rejected", "hidden"]).optional(),
+    status: z.enum(["pending", "approved", "rejected", "hidden", "expired"]).optional(),
     booth_code: z.string().trim().max(40).nullish(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "No fields to update" });

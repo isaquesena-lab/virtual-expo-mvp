@@ -19,9 +19,14 @@
       "migrations_dir": "migrations"
     }
   ],
-  // Public widget key. The form renders Turnstile when TURNSTILE_SECRET is also set.
+  // Public (non-secret) config.
+  // TURNSTILE_SITE_KEY: the form renders the widget when TURNSTILE_SECRET is also set.
+  // MAIL_FROM: sender for owner magic-link emails (MailChannels). MailChannels
+  // requires an SPF record on the sender domain:
+  //   TXT  v=spf1 include:relay.mailchannels.net -all
   "vars": {
-    "TURNSTILE_SITE_KEY": "0x4AAAAAAF8paSM2MSgm5B03"
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAF8paSM2MSgm5B03",
+    "MAIL_FROM": "WetExpo <no-reply@wetexpo.com>"
   },
   // Per-IP rate limit for public booth submissions (anti-spam / slot squatting).
   "ratelimits": [

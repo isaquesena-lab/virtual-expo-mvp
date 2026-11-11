@@ -17,6 +17,10 @@ export interface Booth {
   updated_at: string;
   /** 1 while the exhibitor is present (heartbeat within the last ~90s). */
   is_live: number;
+  /** When a moderator approved the booth (null for legacy/approved-before-migration). */
+  approved_at: string | null;
+  /** Epoch seconds when an approved booth stops being public (null = no expiry set). */
+  expires_at: number | null;
 }
 
 /** Keep in sync with worker/lib/validation.ts CATEGORIES. */

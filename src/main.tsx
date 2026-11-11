@@ -7,6 +7,8 @@ import { Home } from "./pages/Home";
 import { BoothDetail } from "./pages/BoothDetail";
 import { Register } from "./pages/Register";
 import { EditBooth } from "./pages/EditBooth";
+import { Login } from "./pages/Login";
+import { Account } from "./pages/Account";
 import { Admin } from "./pages/Admin";
 import { NotFound } from "./pages/NotFound";
 
@@ -19,6 +21,8 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/booths/:slug" element={<BoothDetail />} />
           <Route path="/register" element={<Register />} />
           <Route path="/edit/:id" element={<EditBooth />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/account" element={<Account />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
