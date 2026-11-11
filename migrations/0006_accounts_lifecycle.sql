@@ -47,6 +47,8 @@ CREATE TABLE booths_v5 (
   position_y REAL CHECK (position_y BETWEEN 0 AND 100),
   logo_url TEXT,
   website_url TEXT,
+  meeting_type TEXT NOT NULL DEFAULT 'google_meet'
+    CHECK (meeting_type IN ('google_meet', 'youtube_live')),
   meet_url TEXT NOT NULL,
   owner_email TEXT NOT NULL,
   edit_token_hash TEXT NOT NULL,
@@ -65,11 +67,11 @@ CREATE TABLE booths_v5 (
 
 INSERT INTO booths_v5
   (id, slug, company_name, tagline, description, category, zone, booth_code,
-   position_x, position_y, logo_url, website_url, meet_url, owner_email,
+   position_x, position_y, logo_url, website_url, meeting_type, meet_url, owner_email,
    edit_token_hash, status, created_at, updated_at,
    logo_data, logo_type, logo_updated_at, live_until)
 SELECT id, slug, company_name, tagline, description, category, zone, booth_code,
-   position_x, position_y, logo_url, website_url, meet_url, owner_email,
+   position_x, position_y, logo_url, website_url, meeting_type, meet_url, owner_email,
    edit_token_hash, status, created_at, updated_at,
    logo_data, logo_type, logo_updated_at, live_until
 FROM booths;
@@ -81,7 +83,9 @@ CREATE INDEX IF NOT EXISTS idx_booths_public ON booths(status, category, zone);
 CREATE INDEX IF NOT EXISTS idx_booths_code ON booths(booth_code);
 
 -- Free stand slots held by expired booths: 'expired' (like 'rejected') no longer
--- reserves a slot.
-CREATE UNIQUE INDEX IF NOT EXISTS idx_booths_slot_unique
+-- reserves a slot. The index is dropped first because 0002 created it with the
+-- older predicate and CREATE IF NOT EXISTS would keep the stale one.
+DROP INDEX IF EXISTS idx_booths_slot_unique;
+CREATE UNIQUE INDEX idx_booths_slot_unique
   ON booths(booth_code)
   WHERE booth_code IS NOT NULL AND status NOT IN ('rejected', 'expired');
