@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
+import { editPath, loadMyBooth } from "../lib/myBooth";
 
 function navClass({ isActive }: { isActive: boolean }): string {
   return [
@@ -11,6 +12,7 @@ function navClass({ isActive }: { isActive: boolean }): string {
 }
 
 export function Layout({ children }: { children: ReactNode }) {
+  const mine = loadMyBooth();
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0a0b14]/80 backdrop-blur">
@@ -22,6 +24,11 @@ export function Layout({ children }: { children: ReactNode }) {
             <NavLink to="/" end className={navClass}>
               Hall
             </NavLink>
+            {mine && (
+              <a href={editPath(mine)} className="rounded-lg px-3 py-2 text-sm font-medium text-amber-200 hover:bg-white/5">
+                My booth
+              </a>
+            )}
             <NavLink
               to="/register"
               className="rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-fuchsia-500/20 transition hover:brightness-110"
