@@ -9,6 +9,9 @@ export interface Booth {
   booth_code: string | null;
   position_x: number | null;
   position_y: number | null;
+  city: string | null;
+  /** ISO 3166-1 alpha-2 code */
+  country: string | null;
   logo_url: string | null;
   website_url: string | null;
   meet_url: string;

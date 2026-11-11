@@ -5,6 +5,7 @@ import { saveMyBooth } from "../lib/myBooth";
 import { CATEGORIES } from "../lib/types";
 import { PAVILIONS, pavilionByZone, standsForZone, TIER_LABELS, type Tier } from "../../shared/stands";
 import { Turnstile } from "../components/Turnstile";
+import { CountrySelect } from "../components/CountrySelect";
 
 const INPUT =
   "mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30";
@@ -76,6 +77,8 @@ export function Register() {
         tagline: String(form.get("tagline") || "") || undefined,
         description: String(form.get("description") || ""),
         category: String(form.get("category") || ""),
+        city: String(form.get("city") || "").trim() || undefined,
+        country: String(form.get("country") || "") || undefined,
         booth_code: standCode,
         website_url: String(form.get("website_url") || "") || undefined,
         meet_url: String(form.get("meet_url") || ""),
@@ -244,6 +247,14 @@ export function Register() {
 
         <Field label="Company name" name="company_name" required placeholder="Acme Inc." maxLength={120} />
         <Field label="Tagline" name="tagline" placeholder="One line about what you do" maxLength={160} />
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="City" name="city" placeholder="Where the company is based" maxLength={80} />
+          <label className="block">
+            <span className={LABEL}>Country</span>
+            <CountrySelect name="country" className={INPUT} />
+          </label>
+        </div>
 
         <label className="block">
           <span className={LABEL}>
