@@ -18,14 +18,39 @@ See the [README](README.md) for the full architecture overview and the
 ## How to contribute
 
 1. Open an issue first for anything non-trivial, so we can agree on the approach.
-2. Fork the repo and create a branch (`feat/...` or `fix/...`).
-3. Keep changes focused; one logical change per pull request.
-4. Make sure it builds and type-checks:
+2. Use the canonical repository: [prohound/virtual-expo-mvp](https://github.com/prohound/virtual-expo-mvp).
+   Contributors with write access can create a branch there; otherwise, fork it first.
+   If your clone predates the ownership transfer, update its origin:
    ```bash
+   git remote set-url origin https://github.com/prohound/virtual-expo-mvp.git
+   ```
+   Keep `origin` pointing to your fork if using one, and configure the Prohound repo
+   as `upstream` instead. Start a `feat/...` or `fix/...` branch from the latest `main`.
+3. Keep changes focused; one logical change per pull request.
+4. Run the same checks as CI:
+   ```bash
+   pnpm test
    pnpm typecheck
    pnpm build
    ```
-5. Open a pull request describing the change and how you tested it.
+5. Push your branch and open a pull request against `prohound/virtual-expo-mvp:main`,
+   describing the change and how you tested it. Use a draft PR while work is in progress:
+   ```bash
+   git push -u origin HEAD
+   gh pr create --repo prohound/virtual-expo-mvp --base main --draft
+   ```
+   The GitHub CLI command requires authentication; opening the PR in the web interface
+   works too. For a fork, select your fork's branch as the PR head.
+6. Wait for CI and maintainer review before merging. CI runs tests, TypeScript checks,
+   and the production build; it does not deploy to Cloudflare. WAF rules and production
+   secrets are configured separately, not through a PR.
+
+### Recommended repository settings
+
+Maintainers should protect `main` with a branch rule/ruleset requiring pull requests,
+review approval, and the CI build check before merging. Configure this in the repository
+settings; editing the workflow alone does not enable branch protection. Keep deployment
+credentials out of pull-request workflows, especially for contributions from forks.
 
 ## Code style
 
