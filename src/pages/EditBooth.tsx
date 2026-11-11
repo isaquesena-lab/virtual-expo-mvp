@@ -45,6 +45,18 @@ const STATUS_COPY: Record<string, { label: string; className: string; note: stri
 const INPUT =
   "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30";
 
+/** A form row with a persistent visible label (placeholders vanish once a field is filled). */
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-sm font-medium text-slate-200">{label}</span>
+      {hint && <span className="mb-1.5 block text-xs text-slate-500">{hint}</span>}
+      {!hint && <span className="mb-1.5 block" />}
+      {children}
+    </label>
+  );
+}
+
 export function EditBooth() {
   const { id } = useParams<{ id: string }>();
   const [token] = useState(tokenFromHash);
@@ -56,6 +68,7 @@ export function EditBooth() {
   const [saved, setSaved] = useState(false);
   const [logoBlob, setLogoBlob] = useState<Blob | null>(null);
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
   const [live, setLive] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
 
@@ -157,6 +170,7 @@ export function EditBooth() {
       }
       setBooth(updated);
       setSaved(true);
+      setDirty(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed");
     } finally {
@@ -285,22 +299,56 @@ export function EditBooth() {
         </form>
       </section>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
-        <input name="company_name" defaultValue={booth?.company_name ?? ""} placeholder="Company name" className={INPUT} />
-        <input name="tagline" defaultValue={booth?.tagline ?? ""} placeholder="Tagline" className={INPUT} />
-        <textarea name="description" defaultValue={booth?.description ?? ""} rows={4} placeholder="Description" className={INPUT} />
-        <select name="category" defaultValue={booth?.category ?? ""} className={INPUT}>
-          <option value="">Keep current category</option>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        <input name="meet_url" type="url" defaultValue={booth?.meet_url ?? ""} placeholder="Meeting URL (https://meet.google.com/…)" className={INPUT} />
-        <input name="website_url" type="url" defaultValue={booth?.website_url ?? ""} placeholder="Website (https://…)" className={INPUT} />
-        <div>
-          <p className="mb-2 text-sm font-medium text-slate-200">Company logo / photo</p>
+      <form
+        onSubmit={onSubmit}
+        onChange={() => setDirty(true)}
+        className="mt-6 space-y-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-4">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-indigo-300">Editing booth</p>
+            <p className="truncate text-lg font-semibold text-white">{booth?.company_name}</p>
+            {booth?.booth_code && (
+              <p className="text-xs text-slate-400">
+                {booth.zone ? `${booth.zone} · ` : ""}Stand {booth.booth_code}
+              </p>
+            )}
+          </div>
+          {dirty && (
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
+              Unsaved changes
+            </span>
+          )}
+        </div>
+
+        <Field label="Company name" hint="Shown as the title on your card and page.">
+          <input name="company_name" defaultValue={booth?.company_name ?? ""} className={INPUT} />
+        </Field>
+        <Field label="Tagline" hint="One short line under the company name (optional).">
+          <input name="tagline" defaultValue={booth?.tagline ?? ""} placeholder="e.g. Climate control, simplified" className={INPUT} />
+        </Field>
+        <Field label="Description" hint="What visitors will read on your booth page.">
+          <textarea name="description" defaultValue={booth?.description ?? ""} rows={4} className={INPUT} />
+        </Field>
+        <Field label="Category" hint="Used by the directory filters.">
+          <select name="category" defaultValue={booth?.category ?? ""} className={INPUT}>
+            <option value="">Keep current category</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Meeting link" hint="Where the Join meeting button sends visitors.">
+          <input name="meet_url" type="url" defaultValue={booth?.meet_url ?? ""} placeholder="https://meet.google.com/…" className={INPUT} />
+        </Field>
+        <Field label="Website" hint="Optional link to your company site.">
+          <input name="website_url" type="url" defaultValue={booth?.website_url ?? ""} placeholder="https://…" className={INPUT} />
+        </Field>
+        <div onChange={() => setDirty(true)}>
+          <p className="text-sm font-medium text-slate-200">Company logo / photo</p>
+          <p className="mb-1.5 text-xs text-slate-500">Shown on your card and booth page.</p>
           <LogoPicker
             key={booth?.logo_url ?? "none"}
             currentUrl={logoSrc}
