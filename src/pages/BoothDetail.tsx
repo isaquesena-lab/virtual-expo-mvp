@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiError, getBooth } from "../lib/api";
 import type { Booth } from "../lib/types";
-import { STAND_BY_CODE, TIER_LABELS } from "../../shared/stands";
+import { TierPill } from "../components/TierPill";
+import { STAND_BY_CODE } from "../../shared/stands";
 
 export function BoothDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -91,9 +92,7 @@ export function BoothDetail() {
           </span>
         )}
         {booth.booth_code && STAND_BY_CODE.get(booth.booth_code) && (
-          <span className="rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-3 py-1 font-medium text-fuchsia-200">
-            {TIER_LABELS[STAND_BY_CODE.get(booth.booth_code)!.tier]}
-          </span>
+          <TierPill tier={STAND_BY_CODE.get(booth.booth_code)!.tier} />
         )}
       </div>
 
