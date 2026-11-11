@@ -194,18 +194,21 @@ flowchart LR
     end
 
     subgraph Edge["Cloudflare Worker (Hono)"]
-        API["/api/*<br/>validation · rate limit · Turnstile"]
-        ST["shared/stands.ts<br/>floor plan"]
+        API["/api/*<br/>validation · rate limit · stand checks"]
     end
 
-    DB[("D1<br/>booths")]
+    ST["shared/stands.ts<br/>floor plan, imported by both sides"]
+    DB[("D1<br/>booths · logos")]
+    TS["Cloudflare Turnstile<br/>bot check"]
     M["Moderator<br/>/admin"]
-    MEET["Exhibitor's Google Meet"]
+    MEET["Exhibitor's Google Meet<br/>(external)"]
 
     V --> API
     X --> API
     M --> API
     API --> DB
+    API -. "verifies token on register" .-> TS
+    V --- ST
     API --- ST
     V -. "Join meeting (outbound link)" .-> MEET
 ```
@@ -217,8 +220,10 @@ stateDiagram-v2
     pending --> rejected: moderator rejects (stand freed)
     approved --> hidden: moderator hides
     hidden --> approved: moderator restores
-    rejected --> pending: moderator reopens
+    rejected --> pending: moderator reopens (409 if the stand was taken meanwhile)
 ```
+
+The state diagram shows the intended moderation workflow. The Worker itself accepts any of the four statuses from a moderator (`pending`, `approved`, `rejected`, `hidden`); only the one-booth-per-stand rule is enforced, and it applies to every status except `rejected`. Exhibitors cannot change their own status.
 
 - **One deployable unit:** the Worker serves `/api/*` and the React SPA as static assets, with D1 for storage.
 - **Server is the source of truth for stands:** the client sends only a stand code; the Worker resolves pavilion, tier and map position from [`shared/stands.ts`](shared/stands.ts).
