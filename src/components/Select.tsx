@@ -77,7 +77,7 @@ export function Select({ value, onChange, options, placeholder, ariaLabel }: Pro
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-white/10 bg-[#14152b] p-1 shadow-xl shadow-black/40"
+          className="themed-scroll absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-white/10 bg-[#14152b] p-1 shadow-xl shadow-black/40"
         >
           {items.map((it, i) => {
             const isSel = it.value === value;
