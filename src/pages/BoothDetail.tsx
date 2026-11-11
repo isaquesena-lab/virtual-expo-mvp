@@ -4,12 +4,25 @@ import { ApiError, getBooth } from "../lib/api";
 import type { Booth } from "../lib/types";
 import { STAND_BY_CODE, TIER_LABELS } from "../../shared/stands";
 
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("");
+}
+
+const CHIP = "rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200";
+
 export function BoothDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [booth, setBooth] = useState<Booth | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -29,6 +42,16 @@ export function BoothDetail() {
       active = false;
     };
   }, [slug]);
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
 
   if (loading) return <p className="py-12 text-center text-slate-400">Loading…</p>;
 
@@ -53,76 +76,123 @@ export function BoothDetail() {
       </div>
     );
 
+  const stand = booth.booth_code ? STAND_BY_CODE.get(booth.booth_code) : undefined;
+  const showLogo = booth.logo_url && !logoFailed;
+
   return (
-    <article className="mx-auto max-w-2xl">
+    <article className="mx-auto max-w-4xl">
       <Link to="/" className="text-sm text-indigo-300 hover:underline">
         ← Back to the hall
       </Link>
 
-      <header className="mt-4 flex items-start gap-4">
-        {booth.logo_url ? (
-          <img
-            src={booth.logo_url}
-            alt=""
-            className="h-16 w-16 rounded-xl border border-white/10 bg-white/5 object-contain"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="grid h-16 w-16 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-xl font-bold text-white shadow-lg shadow-indigo-500/30">
-            {booth.company_name.slice(0, 2).toUpperCase()}
+      {/* Banner */}
+      <div
+        className="mt-4 h-32 rounded-3xl sm:h-44"
+        style={{
+          background:
+            "radial-gradient(circle at 15% 20%, rgba(99,102,241,.9), transparent 55%), radial-gradient(circle at 80% 30%, rgba(217,70,239,.85), transparent 55%), radial-gradient(circle at 50% 110%, rgba(20,184,166,.8), transparent 60%), #14152b",
+        }}
+        aria-hidden="true"
+      />
+
+      <div className="-mt-12 grid gap-5 px-2 sm:-mt-16 sm:px-6 md:grid-cols-[13rem_1fr]">
+        {/* Left: logo + CTA */}
+        <aside className="space-y-3">
+          <div className="grid aspect-square w-32 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-white shadow-xl shadow-black/30 md:w-full">
+            {showLogo ? (
+              <img
+                src={booth.logo_url!}
+                alt=""
+                referrerPolicy="no-referrer"
+                onError={() => setLogoFailed(true)}
+                className="h-full w-full object-contain p-4"
+              />
+            ) : (
+              <span className="bg-gradient-to-br from-indigo-500 to-fuchsia-500 bg-clip-text text-5xl font-bold text-transparent">
+                {initials(booth.company_name)}
+              </span>
+            )}
           </div>
-        )}
-        <div>
-          <h1 className="text-2xl font-bold text-white">{booth.company_name}</h1>
-          {booth.tagline && <p className="text-slate-400">{booth.tagline}</p>}
-        </div>
-      </header>
-
-      <div className="mt-4 flex flex-wrap gap-2 text-xs">
-        <span className="rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3 py-1 font-medium text-indigo-200">
-          {booth.category}
-        </span>
-        {booth.zone && (
-          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">{booth.zone}</span>
-        )}
-        {booth.booth_code && (
-          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">
-            Stand {booth.booth_code}
-          </span>
-        )}
-        {booth.booth_code && STAND_BY_CODE.get(booth.booth_code) && (
-          <span className="rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-3 py-1 font-medium text-fuchsia-200">
-            {TIER_LABELS[STAND_BY_CODE.get(booth.booth_code)!.tier]}
-          </span>
-        )}
-      </div>
-
-      <p className="mt-6 whitespace-pre-line leading-relaxed text-slate-300">{booth.description}</p>
-
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        <a
-          href={booth.meet_url}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-3 font-semibold text-white shadow-lg shadow-fuchsia-500/20 transition hover:brightness-110"
-        >
-          Join meeting ↗
-        </a>
-        {booth.website_url && (
           <a
-            href={booth.website_url}
+            href={booth.meet_url}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex items-center justify-center rounded-xl border border-white/15 px-5 py-3 font-semibold text-slate-200 transition hover:bg-white/5"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-fuchsia-500/20 transition hover:brightness-110 md:max-w-none"
           >
-            Visit website ↗
+            Join meeting ↗
           </a>
-        )}
-      </div>
+        </aside>
 
-      <p className="mt-4 text-xs text-slate-500">
-        The meeting opens in a new tab on an external service. This directory does not host the call.
-      </p>
+        {/* Right: details card */}
+        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-3">
+            {stand ? (
+              <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200">
+                {TIER_LABELS[stand.tier]}
+              </span>
+            ) : (
+              <span />
+            )}
+            <button
+              type="button"
+              onClick={copyLink}
+              className="rounded-full border border-white/15 px-3 py-1 text-xs font-medium text-slate-200 transition hover:bg-white/5"
+            >
+              {copied ? "Copied ✓" : "Copy company link"}
+            </button>
+          </div>
+
+          <h1 className="mt-3 text-3xl font-bold text-white">{booth.company_name}</h1>
+          {booth.tagline && <p className="mt-1 text-slate-400">{booth.tagline}</p>}
+
+          <p className="mt-5 whitespace-pre-line leading-relaxed text-slate-300">{booth.description}</p>
+
+          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-200">
+            {booth.zone && (
+              <span className="flex items-center gap-2">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 text-indigo-300" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11Z" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+                {booth.zone}
+                {booth.booth_code ? ` · Stand ${booth.booth_code}` : ""}
+              </span>
+            )}
+            <span className="flex items-center gap-2">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-indigo-300" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M3 12V4h8l10 10-8 8L3 12Z" />
+                <circle cx="7.5" cy="8.5" r="1" />
+              </svg>
+              {booth.category}
+            </span>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <span className={CHIP}>{booth.category}</span>
+            {booth.zone && <span className={CHIP}>{booth.zone}</span>}
+            {stand && <span className={CHIP}>Tier: {TIER_LABELS[stand.tier]}</span>}
+          </div>
+
+          <hr className="my-5 border-white/10" />
+
+          <div className="flex flex-wrap items-center gap-3">
+            {booth.website_url && (
+              <a
+                href={booth.website_url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/5"
+              >
+                Visit website ↗
+              </a>
+            )}
+          </div>
+
+          <p className="mt-4 text-xs text-slate-500">
+            The meeting opens in a new tab on an external service. This directory does not host the call.
+          </p>
+        </div>
+      </div>
     </article>
   );
 }
