@@ -1,7 +1,7 @@
 -- Seed data for local development.
 -- All companies below are fictional. Meeting links are safe placeholders.
--- Stand codes map to the shared floor plan (shared/stands.ts): 4 pavilions,
--- 880 stands across the ALPHA / BETA / GROWTH tiers.
+-- Stand codes map to the shared floor plan (shared/stands.ts): 4 pavilions:
+-- 880 startup stands (ALPHA / BETA / GROWTH) plus 100 PARTNER stands.
 -- edit_token_hash is a non-matching placeholder: seed booths cannot be edited
 -- via the public edit flow (edit them through the moderator endpoint instead).
 
