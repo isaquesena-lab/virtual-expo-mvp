@@ -9,11 +9,16 @@ import { generateEditToken, hashEditToken, timingSafeEqual } from "./lib/tokens"
 import { uniqueSlug } from "./lib/slug";
 import { verifyTurnstile } from "./lib/turnstile";
 import { STAND_BY_CODE } from "../shared/stands";
+import { MAX_LOGO_BYTES, fromBase64, sniffImage, toBase64 } from "./lib/image";
 
 /** Columns safe to expose on public endpoints (never owner_email / edit_token_hash). */
 const PUBLIC_COLUMNS = `
   id, slug, company_name, tagline, description, category, zone, booth_code,
-  position_x, position_y, logo_url, website_url, meet_url, status,
+  position_x, position_y,
+  CASE WHEN logo_data IS NOT NULL
+       THEN '/api/booths/' || id || '/logo?v=' || COALESCE(strftime('%s', logo_updated_at), '0')
+       ELSE logo_url END AS logo_url,
+  website_url, meet_url, status,
   created_at, updated_at
 `;
 
@@ -254,6 +259,85 @@ app.patch("/api/booths/:id", async (c) => {
   return json({ booth });
 });
 
+/* ---------------------------------- Logo ---------------------------------- */
+
+/** Returns an error Response if the edit token is missing/invalid for this booth, else null. */
+async function checkOwner(c: { env: Env; req: { header: (n: string) => string | undefined } }, id: string): Promise<Response | null> {
+  const token = c.req.header("x-edit-token") ?? "";
+  if (!token) return json({ error: "Missing edit token" }, 401);
+  const row = await c.env.DB.prepare("SELECT edit_token_hash FROM booths WHERE id = ?")
+    .bind(id)
+    .first<{ edit_token_hash: string }>();
+  if (!row) return json({ error: "Booth not found" }, 404);
+  if (!timingSafeEqual(await hashEditToken(token), row.edit_token_hash)) {
+    return json({ error: "Invalid edit token" }, 403);
+  }
+  return null;
+}
+
+// Serve an uploaded logo. Public for approved booths; owner/moderator only otherwise.
+app.get("/api/booths/:id/logo", async (c) => {
+  const id = c.req.param("id");
+  const row = await c.env.DB.prepare("SELECT logo_data, logo_type, status FROM booths WHERE id = ?")
+    .bind(id)
+    .first<{ logo_data: string | null; logo_type: string | null; status: string }>();
+  if (!row || !row.logo_data || !row.logo_type) return new Response("Not found", { status: 404 });
+
+  const isPublic = row.status === "approved";
+  if (!isPublic) {
+    const adminToken = c.req.header("x-admin-token") ?? "";
+    const expected = c.env.ADMIN_TOKEN;
+    const isAdmin = !!expected && adminToken.length === expected.length && timingSafeEqual(adminToken, expected);
+    if (!isAdmin && (await checkOwner(c, id))) return new Response("Not found", { status: 404 });
+  }
+  return new Response(fromBase64(row.logo_data), {
+    headers: {
+      "Content-Type": row.logo_type,
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; sandbox",
+      // URL carries ?v=<updated_at>, so a long cache is safe for public logos.
+      "Cache-Control": isPublic ? "public, max-age=86400" : "private, no-store",
+    },
+  });
+});
+
+// Upload/replace the logo (raw image bytes in the body). Owner only.
+app.put("/api/booths/:id/logo", async (c) => {
+  const id = c.req.param("id");
+  const denied = await checkOwner(c, id);
+  if (denied) return denied;
+
+  const declared = Number(c.req.header("content-length") ?? "0");
+  if (declared > MAX_LOGO_BYTES) return json({ error: "Image is too large (max 512 KB)" }, 413);
+  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  if (bytes.length === 0) return json({ error: "Empty upload" }, 400);
+  if (bytes.length > MAX_LOGO_BYTES) return json({ error: "Image is too large (max 512 KB)" }, 413);
+  const type = sniffImage(bytes);
+  if (!type) return json({ error: "Unsupported image. Use PNG, JPEG or WebP." }, 415);
+
+  await c.env.DB.prepare(
+    "UPDATE booths SET logo_data = ?1, logo_type = ?2, logo_updated_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?3",
+  )
+    .bind(toBase64(bytes), type, id)
+    .run();
+  const booth = await c.env.DB.prepare(`SELECT ${PUBLIC_COLUMNS} FROM booths WHERE id = ?`).bind(id).first();
+  return json({ booth });
+});
+
+// Remove the uploaded logo (and any external logo URL). Owner only.
+app.delete("/api/booths/:id/logo", async (c) => {
+  const id = c.req.param("id");
+  const denied = await checkOwner(c, id);
+  if (denied) return denied;
+  await c.env.DB.prepare(
+    "UPDATE booths SET logo_data = NULL, logo_type = NULL, logo_updated_at = NULL, logo_url = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+  )
+    .bind(id)
+    .run();
+  const booth = await c.env.DB.prepare(`SELECT ${PUBLIC_COLUMNS} FROM booths WHERE id = ?`).bind(id).first();
+  return json({ booth });
+});
+
 /* --------------------------------- Admin --------------------------------- */
 
 const admin = new Hono<{ Bindings: Env }>();
@@ -275,8 +359,8 @@ admin.use("*", async (c, next) => {
 admin.get("/booths", async (c) => {
   const status = c.req.query("status")?.trim();
   const sql = status
-    ? "SELECT * FROM booths WHERE status = ? ORDER BY created_at DESC"
-    : "SELECT * FROM booths ORDER BY created_at DESC";
+    ? `SELECT ${PUBLIC_COLUMNS}, owner_email FROM booths WHERE status = ? ORDER BY created_at DESC`
+    : `SELECT ${PUBLIC_COLUMNS}, owner_email FROM booths ORDER BY created_at DESC`;
   const stmt = status ? c.env.DB.prepare(sql).bind(status) : c.env.DB.prepare(sql);
   const { results } = await stmt.all();
   return json({ booths: results });
@@ -342,7 +426,7 @@ admin.patch("/booths/:id", async (c) => {
   }
   if (!info.meta.changes) return json({ error: "Booth not found" }, 404);
 
-  const booth = await c.env.DB.prepare("SELECT * FROM booths WHERE id = ?")
+  const booth = await c.env.DB.prepare(`SELECT ${PUBLIC_COLUMNS}, owner_email FROM booths WHERE id = ?`)
     .bind(id)
     .first();
   return json({ booth });

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { createBooth, getConfig, getTakenStands, type CreateBoothResult } from "../lib/api";
+import { createBooth, getConfig, getTakenStands, uploadLogo, type CreateBoothResult } from "../lib/api";
+import { LogoPicker } from "../components/LogoPicker";
 import { saveMyBooth } from "../lib/myBooth";
 import { CATEGORIES } from "../lib/types";
 import { PAVILIONS, pavilionByZone, standsForZone, TIER_LABELS, type Tier } from "../../shared/stands";
@@ -20,6 +21,8 @@ export function Register() {
   const [taken, setTaken] = useState<Set<string>>(new Set());
   const [siteKey, setSiteKey] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [logoBlob, setLogoBlob] = useState<Blob | null>(null);
+  const [logoWarning, setLogoWarning] = useState<string | null>(null);
 
   useEffect(() => {
     getConfig()
@@ -66,12 +69,20 @@ export function Register() {
         category: String(form.get("category") || ""),
         booth_code: standCode,
         website_url: String(form.get("website_url") || "") || undefined,
-        logo_url: String(form.get("logo_url") || "") || undefined,
         meet_url: String(form.get("meet_url") || ""),
         owner_email: String(form.get("owner_email") || ""),
         turnstile_token: turnstileToken ?? undefined,
       });
       saveMyBooth({ id: res.id, token: res.edit_token });
+      if (logoBlob) {
+        try {
+          await uploadLogo(res.id, res.edit_token, logoBlob);
+        } catch (err) {
+          setLogoWarning(
+            `Your booth was submitted, but the logo could not be uploaded (${err instanceof Error ? err.message : "error"}). You can add it from your edit link.`,
+          );
+        }
+      }
       setResult(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submission failed");
@@ -88,6 +99,9 @@ export function Register() {
         <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-5">
           <h1 className="text-lg font-semibold text-emerald-300">Submission received 🎉</h1>
           <p className="mt-1 text-sm text-emerald-200/90">{result.message}</p>
+          {logoWarning && (
+            <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-500/10 p-2 text-sm text-amber-100">{logoWarning}</p>
+          )}
           <div className="mt-3 rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
             <p className="font-medium text-white">What happens next</p>
             <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-slate-300">
@@ -259,7 +273,12 @@ export function Register() {
           hint="Must be a Google Meet link (https://meet.google.com/…). Opens in a new tab when visitors join."
         />
         <Field label="Website" name="website_url" type="url" placeholder="https://yourcompany.com" />
-        <Field label="Logo URL" name="logo_url" type="url" placeholder="https://.../logo.png" />
+        <div>
+          <span className={LABEL}>Company logo / photo</span>
+          <div className="mt-2">
+            <LogoPicker onChange={setLogoBlob} disabled={submitting} />
+          </div>
+        </div>
         <Field
           label="Owner email"
           name="owner_email"

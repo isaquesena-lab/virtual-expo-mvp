@@ -107,6 +107,33 @@ export async function updateBooth(
   return data.booth;
 }
 
+export async function uploadLogo(id: string, token: string, image: Blob): Promise<Booth> {
+  const res = await fetch(`/api/booths/${encodeURIComponent(id)}/logo`, {
+    method: "PUT",
+    headers: { "x-edit-token": token, "Content-Type": image.type || "application/octet-stream" },
+    body: image,
+  });
+  const data = await parse<{ booth: Booth }>(res);
+  return data.booth;
+}
+
+export async function deleteLogo(id: string, token: string): Promise<Booth> {
+  const res = await fetch(`/api/booths/${encodeURIComponent(id)}/logo`, {
+    method: "DELETE",
+    headers: { "x-edit-token": token },
+  });
+  const data = await parse<{ booth: Booth }>(res);
+  return data.booth;
+}
+
+/** Fetch a (possibly not-yet-public) logo with the owner's token, as an object URL for <img>. */
+export async function fetchOwnerLogo(url: string, token: string): Promise<string | null> {
+  if (!url.startsWith("/api/")) return url;
+  const res = await fetch(url, { headers: { "x-edit-token": token } });
+  if (!res.ok) return null;
+  return URL.createObjectURL(await res.blob());
+}
+
 /* ------------------------------- Moderator -------------------------------- */
 
 export async function adminListBooths(token: string, status?: string): Promise<Booth[]> {
