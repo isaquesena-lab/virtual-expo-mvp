@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createBooth, getConfig, getTakenStands, type CreateBoothResult } from "../lib/api";
+import { saveMyBooth } from "../lib/myBooth";
 import { CATEGORIES } from "../lib/types";
 import { PAVILIONS, pavilionByZone, standsForZone, TIER_LABELS, type Tier } from "../../shared/stands";
 import { Turnstile } from "../components/Turnstile";
@@ -79,6 +80,7 @@ export function Register() {
         owner_email: String(form.get("owner_email") || ""),
         turnstile_token: turnstileToken ?? undefined,
       });
+      saveMyBooth({ id: res.id, token: res.edit_token });
       setResult(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submission failed");
@@ -109,6 +111,14 @@ export function Register() {
               </li>
               <li>Use your private link below to check the status and edit anytime.</li>
             </ol>
+          </div>
+          <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+            <p className="font-medium">⚠ Google Meet links from free accounts end after 1 hour</p>
+            <p className="mt-1 text-amber-100/90">
+              Without a Google Workspace account, meetings are capped at 60 minutes. When that happens, create a
+              new Meet link and paste it into your booth using the link below — your edit link is the only way back,
+              so bookmark it.
+            </p>
           </div>
           <a
             href={result.edit_url}

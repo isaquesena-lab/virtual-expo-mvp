@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { listBooths } from "../lib/api";
 import type { Booth } from "../lib/types";
 import { CATEGORIES, ZONES } from "../lib/types";
+import { STAND_BY_CODE, TIER_LABELS, type Tier } from "../../shared/stands";
+import { Select } from "../components/Select";
 import { BoothCard } from "../components/BoothCard";
 import { HallMap } from "../components/HallMap";
 
@@ -13,6 +15,9 @@ export function Home() {
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
   const [zone, setZone] = useState("");
+  const [tier, setTier] = useState("");
+  // Filter selections are staged here and only applied on "Apply Filters".
+  const [draft, setDraft] = useState({ category: "", zone: "", tier: "" });
 
   useEffect(() => {
     let active = true;
@@ -29,10 +34,19 @@ export function Home() {
     };
   }, [q, category, zone]);
 
-  const hasFilters = useMemo(() => Boolean(q || category || zone), [q, category, zone]);
-  const inputClass =
-    "rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30";
-
+  const visible = useMemo(
+    () => (tier ? booths.filter((b) => b.booth_code && STAND_BY_CODE.get(b.booth_code)?.tier === tier) : booths),
+    [booths, tier],
+  );
+  const hasFilters = Boolean(q || category || zone || tier);
+  const hasPending = Boolean(draft.category || draft.zone || draft.tier);
+  function clearFilters() {
+    setQ("");
+    setCategory("");
+    setZone("");
+    setTier("");
+    setDraft({ category: "", zone: "", tier: "" });
+  }
   return (
     <div className="space-y-8">
       <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-indigo-600/30 via-fuchsia-600/20 to-transparent p-6 sm:p-10">
@@ -58,58 +72,108 @@ export function Home() {
       </section>
 
       <section aria-label="Virtual hall map">
-        <HallMap booths={booths} />
+        <HallMap booths={visible} />
       </section>
 
-      <section className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+      <section className="space-y-5" aria-label="Discover companies">
+        <div>
+          <h2 className="text-3xl font-bold text-white">Discover Companies</h2>
+          <p className="mt-1 text-sm text-slate-400">Explore all the exhibitors at the virtual expo.</p>
+        </div>
+
+        <div className="relative">
+          <svg viewBox="0 0 24 24" className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-indigo-300" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
           <input
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search company, pitch or booth number…"
             aria-label="Search booths"
-            className={inputClass}
+            className="w-full rounded-2xl border border-white/10 bg-white/5 py-4 pl-12 pr-4 text-base text-slate-100 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30"
           />
-          <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Filter by category" className={inputClass}>
-            <option value="">All categories</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <select value={zone} onChange={(e) => setZone(e.target.value)} aria-label="Filter by zone" className={inputClass}>
-            <option value="">All pavilions</option>
-            {ZONES.map((z) => (
-              <option key={z} value={z}>
-                {z}
-              </option>
-            ))}
-          </select>
         </div>
 
-        {loading && <p className="py-8 text-center text-slate-400">Loading booths…</p>}
+        <div className="grid items-start gap-5 lg:grid-cols-[1fr_18rem]">
+          <div className="order-2 min-w-0 lg:order-1">
+            {loading && <p className="py-8 text-center text-slate-400">Loading booths…</p>}
 
-        {error && (
-          <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-300">
-            Could not load booths: {error}
-          </p>
-        )}
+            {error && (
+              <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-300">
+                Could not load booths: {error}
+              </p>
+            )}
 
-        {!loading && !error && booths.length === 0 && (
-          <div className="rounded-xl border border-dashed border-white/15 p-8 text-center text-slate-400">
-            {hasFilters ? "No booths match your filters." : "No booths published yet. Be the first to list one."}
+            {!loading && !error && visible.length === 0 && (
+              <div className="rounded-xl border border-dashed border-white/15 p-8 text-center text-slate-400">
+                {hasFilters ? "No booths match your filters." : "No booths published yet. Be the first to list one."}
+              </div>
+            )}
+
+            {!loading && !error && visible.length > 0 && (
+              <>
+                <p className="mb-3 text-sm text-slate-400">
+                  {visible.length} {visible.length === 1 ? "company" : "companies"}
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {visible.map((b) => (
+                    <BoothCard key={b.id} booth={b} />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-        )}
 
-        {!loading && !error && booths.length > 0 && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {booths.map((b) => (
-              <BoothCard key={b.id} booth={b} />
-            ))}
-          </div>
-        )}
+          <aside className="order-1 rounded-2xl border border-white/10 bg-white/[0.03] p-4 lg:sticky lg:top-20 lg:order-2">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-300">Filters</h3>
+              <button
+                type="button"
+                onClick={clearFilters}
+                disabled={!hasFilters && !hasPending}
+                className="text-sm font-medium text-slate-400 transition hover:text-white disabled:opacity-40"
+              >
+                ⊗ Clear
+              </button>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setCategory(draft.category);
+                setZone(draft.zone);
+                setTier(draft.tier);
+              }}
+              className="space-y-3"
+            >
+              <Select
+                value={draft.category}
+                onChange={(v) => setDraft({ ...draft, category: v })}
+                placeholder="Category"
+                options={CATEGORIES.map((c) => ({ value: c, label: c }))}
+              />
+              <Select
+                value={draft.zone}
+                onChange={(v) => setDraft({ ...draft, zone: v })}
+                placeholder="Pavilion"
+                options={ZONES.map((z) => ({ value: z, label: z }))}
+              />
+              <Select
+                value={draft.tier}
+                onChange={(v) => setDraft({ ...draft, tier: v })}
+                placeholder="Tier"
+                options={(Object.keys(TIER_LABELS) as Tier[]).map((t) => ({ value: t, label: TIER_LABELS[t] }))}
+              />
+              <button
+                type="submit"
+                className="w-full rounded-full border border-indigo-300/40 px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500 hover:to-fuchsia-500"
+              >
+                Apply Filters
+              </button>
+            </form>
+          </aside>
+        </div>
       </section>
     </div>
   );
