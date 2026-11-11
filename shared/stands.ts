@@ -2,17 +2,20 @@
  * Authoritative floor plan — the single source of truth for pavilions and stand slots.
  * Shared by the client (render + selection) and the Worker (validate + place).
  *
- * This models the event's OWN pavilion structure (4 pavilions, 880 stands across
- * the ALPHA / BETA / GROWTH tiers). It is an ORIGINAL layout — not a copy of any
+ * This models the event's OWN pavilion structure: 4 pavilions with 980 stands across
+ * the ALPHA / BETA / GROWTH startup tiers plus 100 PARTNER stands (large companies
+ * and partners that are not startups) spread across every pavilion, roughly the
+ * partner-to-startup ratio of large tech events (about 1 partner per 8-9 startups). It is an ORIGINAL layout — not a copy of any
  * other event's floor plan or visual identity.
  *
  * Coordinates are percentages (0–100) of the hall container, used directly for
  * absolute positioning on the map.
  */
 
-export type Tier = "ALPHA" | "BETA" | "GROWTH";
+export type Tier = "PARTNER" | "ALPHA" | "BETA" | "GROWTH";
 
 export const TIER_LABELS: Record<Tier, string> = {
+  PARTNER: "Partner",
   ALPHA: "Alpha",
   BETA: "Beta",
   GROWTH: "Growth",
@@ -38,10 +41,12 @@ interface PavilionDef {
 }
 
 const PAVILION_DEFS: PavilionDef[] = [
-  { zone: "Pavilhão 1", prefix: "P1", tiers: [["ALPHA", 140]], box: [4, 48, 11, 45] },
-  { zone: "Pavilhão 2", prefix: "P2", tiers: [["ALPHA", 150], ["BETA", 80]], box: [52, 96, 11, 45] },
-  { zone: "Pavilhão 3", prefix: "P3", tiers: [["ALPHA", 170], ["GROWTH", 60]], box: [4, 48, 55, 89] },
-  { zone: "Pavilhão 4", prefix: "P4", tiers: [["ALPHA", 200], ["BETA", 80]], box: [52, 96, 55, 89] },
+  // PARTNER is always the LAST tier of a pavilion: stand codes are assigned in tier order,
+  // so appending keeps every existing code (P1-001 ... P4-280) on the same tier and pavilion.
+  { zone: "Pavilhão 1", prefix: "P1", tiers: [["ALPHA", 140], ["PARTNER", 20]], box: [4, 48, 11, 45] },
+  { zone: "Pavilhão 2", prefix: "P2", tiers: [["ALPHA", 150], ["BETA", 80], ["PARTNER", 25]], box: [52, 96, 11, 45] },
+  { zone: "Pavilhão 3", prefix: "P3", tiers: [["ALPHA", 170], ["GROWTH", 60], ["PARTNER", 25]], box: [4, 48, 55, 89] },
+  { zone: "Pavilhão 4", prefix: "P4", tiers: [["ALPHA", 200], ["BETA", 80], ["PARTNER", 30]], box: [52, 96, 55, 89] },
 ];
 
 export interface Pavilion {
