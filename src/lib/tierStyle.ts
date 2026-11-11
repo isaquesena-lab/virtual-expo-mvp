@@ -4,9 +4,10 @@ import type { Tier } from "../../shared/stands";
 /**
  * One colour identity per hierarchy tier, used by every widget that shows a company
  * (cards, detail page, hall map) so a tier always reads the same everywhere.
- * ALPHA: orange to red. BETA: green to light blue. GROWTH: purple to a deeper blue.
+ * PARTNER: gold. ALPHA: orange to red. BETA: green to light blue. GROWTH: purple to a deeper blue.
  */
 export const TIER_STYLE: Record<Tier, { from: string; to: string; text: string }> = {
+  PARTNER: { from: "#facc15", to: "#fef08a", text: "#fef9c3" },
   ALPHA: { from: "#fb923c", to: "#ef4444", text: "#fed7aa" },
   BETA: { from: "#4ade80", to: "#38bdf8", text: "#bbf7d0" },
   GROWTH: { from: "#a855f7", to: "#2563eb", text: "#e9d5ff" },

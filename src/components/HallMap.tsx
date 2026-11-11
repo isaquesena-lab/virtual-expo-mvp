@@ -16,6 +16,7 @@ import { PAVILIONS, STANDS, STAND_BY_CODE, TIER_LABELS, type Pavilion, type Tier
 
 /** Representative solid colour per tier (glow, selection); fills use the tier gradient. */
 const TIER_COLOR: Record<Tier, string> = {
+  PARTNER: TIER_STYLE.PARTNER.from,
   ALPHA: TIER_STYLE.ALPHA.from,
   BETA: TIER_STYLE.BETA.from,
   GROWTH: TIER_STYLE.GROWTH.from,
