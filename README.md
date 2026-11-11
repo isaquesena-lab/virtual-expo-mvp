@@ -36,7 +36,7 @@
 
 ## Why this exists
 
-When an in-person expo is disrupted, exhibitors and visitors still need an easy way to find one another and start a conversation. WetExpo does that and nothing more: an exhibitor registers a company and shares a Google Meet link, a moderator reviews it, and visitors discover the booth through search, filters or a visual hall map, then join from their phone. No visitor accounts, no installs.
+When an in-person expo is disrupted, exhibitors and visitors still need an easy way to find one another and start a conversation. WetExpo does that and nothing more: an exhibitor registers a company and shares a Google Meet or YouTube Live link, a moderator reviews it, and visitors discover the booth through search, filters or a visual hall map, then join from their phone. No visitor accounts, no installs.
 
 ## Features
 
@@ -85,7 +85,7 @@ A capability link lets owners check the moderation status and edit the booth at 
 <td valign="top">
 
 ### Meeting link refresh
-Google Meet links from accounts without Workspace end after **1 hour**. A dedicated card on the edit page swaps in a fresh link in one step.
+Google Meet links from accounts without Workspace end after **1 hour**. A dedicated card on the edit page swaps in a fresh link in one step; YouTube Live booths can replace their stream URL there as well.
 
 </td>
 <td valign="top">
@@ -97,7 +97,7 @@ A review queue to approve, reject, hide and place booths. Pending submissions al
 <td valign="top">
 
 ### Built to be abuse-resistant
-Turnstile on the form, a per-IP rate limit, strict input validation, https-only links and Google Meet only for the meeting URL.
+Turnstile on the form, a per-IP rate limit, strict input validation, https-only links and provider-specific allowlists for Google Meet and YouTube Live URLs.
 
 </td>
 </tr>
@@ -158,7 +158,7 @@ Local values live in `.dev.vars` (git-ignored); copy `.dev.vars.example` to star
 
 ## Usage
 
-**Visitors.** Open the site, then use the hall map (tap a stand), the search bar or the filters. Open a booth and press **Join meeting**; the call opens in a new tab on the exhibitor's own Google Meet link.
+**Visitors.** Open the site, then use the hall map (tap a stand), the search bar or the filters. Open a booth and press **Join meeting** or **Watch live stream**; the external session opens in a new tab.
 
 **Exhibitors.**
 
@@ -200,7 +200,7 @@ flowchart LR
 
     DB[("D1<br/>booths")]
     M["Moderator<br/>/admin"]
-    MEET["Exhibitor's Google Meet"]
+    MEET["Exhibitor's Meet or YouTube Live"]
 
     V --> API
     X --> API
@@ -304,7 +304,7 @@ zone — the Worker itself is hostname-agnostic.
 - **Moderation first.** Submissions are `pending` by default; nothing is public until a moderator approves it.
 - **Capability tokens.** Edit links carry 32 random bytes, stored only as a SHA-256 digest and shown to the owner once. The token sits in the URL fragment (`#token=...`), which keeps it out of server logs and referrers. Comparison is constant time.
 - **Validated input.** Every request body is validated with Zod on the Worker, all D1 statements are parameterized, and user text is rendered as plain text, never as HTML.
-- **Safe links.** Submitted URLs must be `https`; the meeting link must be a Google Meet URL.
+- **Safe links.** Submitted URLs must be `https`; meeting links must match their selected provider: Google Meet or YouTube Live.
 - **Safe uploads.** Images are identified by their magic bytes, never by the client's `Content-Type`. SVG and GIF are rejected because SVG can carry script. Files are served with `nosniff` and a sandboxing CSP.
 - **Anti-abuse.** Turnstile verification plus a per-IP rate limit on submissions.
 - **No visitor data.** Browsing needs no account and collects no visitor email.
