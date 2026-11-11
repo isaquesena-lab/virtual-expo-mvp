@@ -51,6 +51,8 @@ export interface CreateBoothPayload {
   description: string;
   category: string;
   booth_code: string;
+  city?: string;
+  country?: string;
   website_url?: string;
   logo_url?: string;
   meeting_type: MeetingType;

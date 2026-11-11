@@ -11,6 +11,7 @@ import {
   type CreateBoothPayload,
 } from "../lib/api";
 import { LogoPicker } from "../components/LogoPicker";
+import { CountrySelect } from "../components/CountrySelect";
 import type { Booth, MeetingType } from "../lib/types";
 import { CATEGORIES, MEETING_TYPE_COPY } from "../lib/types";
 import { saveMyBooth } from "../lib/myBooth";
@@ -165,6 +166,9 @@ export function EditBooth() {
       const v = String(form.get(key) || "");
       if (v) payload[key] = v;
     }
+    // City and country may be cleared, so they are always sent (empty string = remove).
+    payload.city = String(form.get("city") || "").trim();
+    payload.country = String(form.get("country") || "");
     try {
       let updated = await updateBooth(id, token, payload);
       if (logoBlob) {
@@ -344,6 +348,14 @@ export function EditBooth() {
             ))}
           </select>
         </Field>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="City" hint="Where the company is based.">
+            <input name="city" defaultValue={booth?.city ?? ""} maxLength={80} placeholder="e.g. Lisbon" className={INPUT} />
+          </Field>
+          <Field label="Country" hint="Shown on your card and page.">
+            <CountrySelect name="country" defaultValue={booth?.country} className={INPUT} />
+          </Field>
+        </div>
         <Field label="How visitors join" hint="Choose the service that hosts this booth's live session.">
           <select name="meeting_type" value={meetingType} onChange={(e) => setMeetingType(e.target.value as MeetingType)} className={INPUT}>
             <option value="google_meet">Google Meet</option>

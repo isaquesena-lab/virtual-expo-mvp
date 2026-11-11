@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isCountryCode } from "../../shared/countries";
 
 /** Allowed booth categories. Keep in sync with src/lib/types.ts. */
 export const CATEGORIES = [
@@ -30,6 +31,13 @@ const googleMeetUrl = httpsUrl.refine(
   (u) => new URL(u).hostname.toLowerCase() === "meet.google.com",
   { message: "Meeting URL must be a Google Meet link (meet.google.com)" },
 );
+
+/** Optional city (free text) and country (ISO 3166-1 alpha-2 code). Empty string clears the value. */
+const optionalCity = z.string().trim().max(80).optional().transform((v) => v || undefined);
+const optionalCountry = z
+  .union([z.literal(""), z.string().trim().toUpperCase().refine(isCountryCode, { message: "Unknown country" })])
+  .optional()
+  .transform((v) => v || undefined);
 
 const youtubeLiveUrl = httpsUrl.refine(
   (u) => {
@@ -70,6 +78,8 @@ export const createBoothSchema = z.object({
   // Chosen stand slot. The server resolves zone + map position from this code;
   // the client never sends coordinates directly.
   booth_code: z.string().trim().min(1).max(40),
+  city: optionalCity,
+  country: optionalCountry,
   website_url: optionalHttpsUrl,
   logo_url: optionalHttpsUrl,
   ...meetingFields,
@@ -86,6 +96,8 @@ export const editBoothSchema = z
     tagline: z.string().trim().max(160).optional().transform((v) => v || undefined),
     description: z.string().trim().min(20).max(2000),
     category: z.enum(CATEGORIES),
+    city: optionalCity,
+    country: optionalCountry,
     website_url: optionalHttpsUrl,
     logo_url: optionalHttpsUrl,
     meeting_type: z.enum(MEETING_TYPES).optional(),

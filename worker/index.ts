@@ -14,7 +14,7 @@ import { MAX_LOGO_BYTES, fromBase64, sniffImage, toBase64 } from "./lib/image";
 /** Columns safe to expose on public endpoints (never owner_email / edit_token_hash). */
 const PUBLIC_COLUMNS = `
   id, slug, company_name, tagline, description, category, zone, booth_code,
-  position_x, position_y,
+  position_x, position_y, city, country,
   CASE WHEN logo_data IS NOT NULL
        THEN '/api/booths/' || id || '/logo?v=' || COALESCE(strftime('%s', logo_updated_at), '0')
        ELSE logo_url END AS logo_url,
@@ -152,9 +152,9 @@ app.post("/api/booths", async (c) => {
     await c.env.DB.prepare(
       `INSERT INTO booths
          (id, slug, company_name, tagline, description, category,
-          zone, booth_code, position_x, position_y,
+          zone, booth_code, position_x, position_y, city, country,
           logo_url, website_url, meeting_type, meet_url, owner_email, edit_token_hash, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
     )
       .bind(
         id,
@@ -167,6 +167,8 @@ app.post("/api/booths", async (c) => {
         stand.code,
         stand.x,
         stand.y,
+        data.city ?? null,
+        data.country ?? null,
         data.logo_url ?? null,
         data.website_url ?? null,
         data.meeting_type,
