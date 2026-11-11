@@ -115,13 +115,13 @@ Turnstile on the form, a per-IP rate limit, strict input validation, https-only 
 
 | Area | Status | Notes |
 | --- | :---: | --- |
-| Hall map, directory, booth pages | Live | Original layout, 880 stands in 4 pavilions |
+| Hall map, directory, booth pages | Live | Original layout, 980 stands in 4 pavilions, with colour-coded tiers |
 | Registration, moderation, owner editing | Live | Pending by default; edit link shown once |
 | Logo upload | Live | Browser accepts PNG, JPEG, WebP, GIF, AVIF or BMP up to 25 MB; Worker accepts PNG, JPEG or WebP up to 512 KB |
 | Anti-abuse (Turnstile, rate limit) | Live | Per-IP, 5 submissions per minute |
 | Verified edit-link recovery | Planned | Email delivery or moderator-issued links |
 | Click-to-place booth positions | Planned | Moderator tool |
-| Availability state with expiry | Planned | Show a booth as active only while the exhibitor is present |
+| Live now badge | Live | Declared by the exhibitor (Google Meet cannot report room occupancy), shown on cards and the map, with a directory filter |
 | Real moderator authentication | Planned | Replaces the shared admin token |
 | Privacy-reviewed aggregate counters | Planned | Booth opens and outbound joins only |
 
@@ -228,12 +228,12 @@ stateDiagram-v2
 
 | Pavilion | Stands | Tiers |
 | --- | ---: | --- |
-| Pavilhão 1 | 140 | Alpha 140 |
-| Pavilhão 2 | 230 | Alpha 150, Beta 80 |
-| Pavilhão 3 | 230 | Alpha 170, Growth 60 |
-| Pavilhão 4 | 280 | Alpha 200, Beta 80 |
+| Pavilhão 1 | 160 | Alpha 140, Partner 20 |
+| Pavilhão 2 | 255 | Alpha 150, Beta 80, Partner 25 |
+| Pavilhão 3 | 255 | Alpha 170, Growth 60, Partner 25 |
+| Pavilhão 4 | 310 | Alpha 200, Beta 80, Partner 30 |
 
-880 stands in total, with codes such as `P3-100`. The layout is original to this project and intentionally does not copy any other event's map.
+980 stands in total (880 for startups and 100 for Partner companies, spread across every pavilion), with codes such as `P3-100`. Partner is always the last tier of a pavilion, so adding it did not change any existing stand code. Tiers are colour-coded the same way everywhere: Alpha orange to red, Beta green to light blue, Growth purple to deep blue, Partner gold. The layout is original to this project and intentionally does not copy any other event's map.
 
 ## API reference
 
