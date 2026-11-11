@@ -12,8 +12,7 @@
     {
       "binding": "DB",
       "database_name": "virtual-expo-db",
-      // Replace with the real id from `pnpm db:create` before deploying to production.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "f56e24a9-c222-4b5a-a60b-8ef4f5ae0ea4",
       "migrations_dir": "migrations"
     }
   ],
