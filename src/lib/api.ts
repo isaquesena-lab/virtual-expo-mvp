@@ -112,7 +112,7 @@ export async function updateBooth(
 export async function adminListBooths(token: string, status?: string): Promise<Booth[]> {
   const qs = status ? `?status=${encodeURIComponent(status)}` : "";
   const res = await fetch(`/api/admin/booths${qs}`, {
-    headers: { "x-admin-token": token },
+    headers: { "x-admin-token": token.trim() },
   });
   const data = await parse<{ booths: Booth[] }>(res);
   return data.booths;
@@ -131,7 +131,7 @@ export async function adminUpdateBooth(
 ): Promise<Booth> {
   const res = await fetch(`/api/admin/booths/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", "x-admin-token": token },
+    headers: { "Content-Type": "application/json", "x-admin-token": token.trim() },
     body: JSON.stringify(payload),
   });
   const data = await parse<{ booth: Booth }>(res);

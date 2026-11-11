@@ -260,9 +260,11 @@ const admin = new Hono<{ Bindings: Env }>();
 
 // Simple shared-secret guard. Replace with real auth before scaling moderators.
 admin.use("*", async (c, next) => {
-  const expected = c.env.ADMIN_TOKEN;
+  // Trim to tolerate a stray trailing newline/whitespace in the stored secret
+  // (common when the secret is piped from a file on Windows).
+  const expected = (c.env.ADMIN_TOKEN ?? "").trim();
   if (!expected) return json({ error: "Moderation is not configured (ADMIN_TOKEN unset)" }, 503);
-  const given = c.req.header("x-admin-token") ?? "";
+  const given = (c.req.header("x-admin-token") ?? "").trim();
   if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
     return json({ error: "Unauthorized" }, 401);
   }
