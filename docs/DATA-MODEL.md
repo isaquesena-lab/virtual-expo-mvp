@@ -16,6 +16,7 @@ CREATE TABLE booths (
   position_y REAL CHECK (position_y BETWEEN 0 AND 100),
   logo_url TEXT,
   website_url TEXT,
+  meeting_type TEXT NOT NULL DEFAULT 'google_meet',
   meet_url TEXT NOT NULL,
   owner_email TEXT NOT NULL,
   edit_token_hash TEXT NOT NULL,
@@ -43,7 +44,7 @@ Return only fields needed to render a booth. Never return `owner_email` or `edit
 ## Registration handling
 
 - Validate company size and descriptions; trim and normalize input.
-- Validate meeting and website URLs with allowlisted HTTPS schemes; validate Meet host if advertising specifically a Google Meet integration.
+- Validate meeting and website URLs with allowlisted HTTPS schemes; validate the selected provider's host and URL shape for Google Meet or YouTube Live.
 - Escape rendered text; reject injected markup and unsafe image URLs.
 - Do not accept arbitrary `position_x/y`, status or moderation flags from the public form.
 - Check for duplicates and impersonation before approval.
