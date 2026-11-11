@@ -117,7 +117,7 @@ Turnstile on the form, a per-IP rate limit, strict input validation, https-only 
 | --- | :---: | --- |
 | Hall map, directory, booth pages | Live | Original layout, 880 stands in 4 pavilions |
 | Registration, moderation, owner editing | Live | Pending by default; edit link shown once |
-| Logo upload | Live | PNG, JPEG or WebP up to 512 KB |
+| Logo upload | Live | Browser accepts PNG, JPEG, WebP, GIF, AVIF or BMP up to 25 MB; Worker accepts PNG, JPEG or WebP up to 512 KB |
 | Anti-abuse (Turnstile, rate limit) | Live | Per-IP, 5 submissions per minute |
 | Verified edit-link recovery | Planned | Email delivery or moderator-issued links |
 | Click-to-place booth positions | Planned | Moderator tool |
@@ -291,7 +291,7 @@ The first deploy ships to a free `*.workers.dev` subdomain; add a custom domain 
 - **The moderator area answers `503`**: `ADMIN_TOKEN` is not set in `.dev.vars`.
 - **Registration says the anti-bot check failed**: `TURNSTILE_SECRET` is set but the widget did not complete. Leave the secret unset for local development.
 - **An exhibitor lost their edit link**: it is shown once and there is no recovery flow yet, so the booth cannot be edited by its owner until one exists (see the roadmap).
-- **Logo upload is rejected**: only PNG, JPEG and WebP are accepted (SVG and GIF are refused on purpose), up to 512 KB after the browser resizes it.
+- **Logo upload is rejected**: the browser accepts PNG, JPEG, WebP, GIF, AVIF and BMP up to 25 MB, then resizes and re-encodes the image as WebP. Direct Worker uploads accept only PNG, JPEG or WebP, up to 512 KB.
 
 ## Security and privacy
 
