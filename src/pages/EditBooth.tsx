@@ -10,6 +10,7 @@ import {
   uploadLogo,
 } from "../lib/api";
 import { LogoPicker } from "../components/LogoPicker";
+import { CountrySelect } from "../components/CountrySelect";
 import type { Booth } from "../lib/types";
 import { CATEGORIES } from "../lib/types";
 import { saveMyBooth } from "../lib/myBooth";
@@ -162,6 +163,9 @@ export function EditBooth() {
       const v = String(form.get(key) || "");
       if (v) payload[key] = v;
     }
+    // City and country may be cleared, so they are always sent (empty string = remove).
+    payload.city = String(form.get("city") || "").trim();
+    payload.country = String(form.get("country") || "");
     try {
       let updated = await updateBooth(id, token, payload);
       if (logoBlob) {
@@ -340,6 +344,14 @@ export function EditBooth() {
             ))}
           </select>
         </Field>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="City" hint="Where the company is based.">
+            <input name="city" defaultValue={booth?.city ?? ""} maxLength={80} placeholder="e.g. Lisbon" className={INPUT} />
+          </Field>
+          <Field label="Country" hint="Shown on your card and page.">
+            <CountrySelect name="country" defaultValue={booth?.country} className={INPUT} />
+          </Field>
+        </div>
         <Field label="Meeting link" hint="Where the Join meeting button sends visitors.">
           <input name="meet_url" type="url" defaultValue={booth?.meet_url ?? ""} placeholder="https://meet.google.com/…" className={INPUT} />
         </Field>

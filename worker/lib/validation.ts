@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isCountryCode } from "../../shared/countries";
 
 /** Allowed booth categories. Keep in sync with src/lib/types.ts. */
 export const CATEGORIES = [
@@ -40,6 +41,13 @@ const meetUrl = httpsUrl.refine(
   { message: `Meeting URL must be a Google Meet link (${MEET_HOSTS.join(", ")})` },
 );
 
+/** Optional city (free text) and country (ISO 3166-1 alpha-2 code). Empty string clears the value. */
+const optionalCity = z.string().trim().max(80).optional().transform((v) => v || undefined);
+const optionalCountry = z
+  .union([z.literal(""), z.string().trim().toUpperCase().refine(isCountryCode, { message: "Unknown country" })])
+  .optional()
+  .transform((v) => v || undefined);
+
 /** Public submission payload (POST /api/booths). */
 export const createBoothSchema = z.object({
   company_name: z.string().trim().min(2).max(120),
@@ -49,6 +57,8 @@ export const createBoothSchema = z.object({
   // Chosen stand slot. The server resolves zone + map position from this code;
   // the client never sends coordinates directly.
   booth_code: z.string().trim().min(1).max(40),
+  city: optionalCity,
+  country: optionalCountry,
   website_url: optionalHttpsUrl,
   logo_url: optionalHttpsUrl,
   meet_url: meetUrl,
@@ -65,6 +75,8 @@ export const editBoothSchema = z
     tagline: z.string().trim().max(160).optional().transform((v) => v || undefined),
     description: z.string().trim().min(20).max(2000),
     category: z.enum(CATEGORIES),
+    city: optionalCity,
+    country: optionalCountry,
     website_url: optionalHttpsUrl,
     logo_url: optionalHttpsUrl,
     meet_url: meetUrl,

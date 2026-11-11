@@ -4,6 +4,7 @@ import type { Booth } from "../lib/types";
 import { LiveBadge } from "./LiveBadge";
 import { TierPill } from "./TierPill";
 import { STAND_BY_CODE } from "../../shared/stands";
+import { formatOrigin } from "../../shared/countries";
 
 function initials(name: string): string {
   return name
@@ -23,6 +24,15 @@ function PinIcon() {
   );
 }
 
+function GlobeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-indigo-300" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z" />
+    </svg>
+  );
+}
+
 function TagIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-indigo-300" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -36,6 +46,7 @@ export function BoothCard({ booth }: { booth: Booth }) {
   const [logoFailed, setLogoFailed] = useState(false);
   const stand = booth.booth_code ? STAND_BY_CODE.get(booth.booth_code) : undefined;
   const showLogo = booth.logo_url && !logoFailed;
+  const origin = formatOrigin(booth.city, booth.country, typeof navigator !== "undefined" ? navigator.language : undefined);
 
   return (
     <Link
@@ -78,6 +89,12 @@ export function BoothCard({ booth }: { booth: Booth }) {
               {booth.zone}
               {booth.booth_code ? ` · ${booth.booth_code}` : ""}
             </span>
+          </li>
+        )}
+        {origin && (
+          <li className="flex items-center gap-2">
+            <GlobeIcon />
+            <span className="truncate">{origin}</span>
           </li>
         )}
         <li className="flex items-center gap-2">
