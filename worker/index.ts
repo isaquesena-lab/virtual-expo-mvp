@@ -23,8 +23,10 @@ const PUBLIC_COLUMNS = `
   CASE WHEN live_until > CAST(strftime('%s', 'now') AS INTEGER) THEN 1 ELSE 0 END AS is_live
 `;
 
-/** Seconds a heartbeat keeps a booth live. The owner page pings well inside this window. */
-const LIVE_TTL_SECONDS = 90;
+/** How long an owner may mark a booth live in one go. */
+const LIVE_DEFAULT_MINUTES = 60;
+const LIVE_MIN_MINUTES = 5;
+const LIVE_MAX_MINUTES = 240;
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -205,7 +207,7 @@ app.get("/api/booths/:id/manage", async (c) => {
   if (!token) return json({ error: "Missing edit token" }, 401);
 
   const row = await c.env.DB.prepare(
-    `SELECT ${PUBLIC_COLUMNS}, owner_email, edit_token_hash FROM booths WHERE id = ?`,
+    `SELECT ${PUBLIC_COLUMNS}, live_until, owner_email, edit_token_hash FROM booths WHERE id = ?`,
   )
     .bind(id)
     .first<Record<string, unknown> & { edit_token_hash: string }>();
@@ -352,7 +354,9 @@ app.delete("/api/booths/:id/logo", async (c) => {
   return json({ booth });
 });
 
-// Live presence heartbeat. Requires the owner token; only approved booths can go live.
+// Mark the booth live for a chosen number of minutes (default 60, 5..240). The state is
+// stored on the server, so it survives reloads and navigation; calling it again extends it.
+// Requires the owner token; only approved booths can go live.
 app.post("/api/booths/:id/live", async (c) => {
   const id = c.req.param("id");
   const token = c.req.header("x-edit-token") ?? "";
@@ -367,12 +371,12 @@ app.post("/api/booths/:id/live", async (c) => {
   if (row.status !== "approved") {
     return json({ error: "Only approved booths can go live" }, 409);
   }
-  await c.env.DB.prepare(
-    "UPDATE booths SET live_until = CAST(strftime('%s', 'now') AS INTEGER) + ?1 WHERE id = ?2",
-  )
-    .bind(LIVE_TTL_SECONDS, id)
-    .run();
-  return json({ live: true, ttl: LIVE_TTL_SECONDS });
+  const body = (await c.req.json().catch(() => ({}))) as { minutes?: unknown };
+  const asked = typeof body.minutes === "number" && Number.isFinite(body.minutes) ? Math.round(body.minutes) : LIVE_DEFAULT_MINUTES;
+  const minutes = Math.min(LIVE_MAX_MINUTES, Math.max(LIVE_MIN_MINUTES, asked));
+  const until = Math.floor(Date.now() / 1000) + minutes * 60;
+  await c.env.DB.prepare("UPDATE booths SET live_until = ?1 WHERE id = ?2").bind(until, id).run();
+  return json({ live: true, live_until: until, minutes });
 });
 
 // Go offline immediately.
