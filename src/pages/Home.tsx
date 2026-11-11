@@ -6,6 +6,7 @@ import { CATEGORIES, ZONES } from "../lib/types";
 import { STAND_BY_CODE, TIER_LABELS, type Tier } from "../../shared/stands";
 import { Select } from "../components/Select";
 import { BoothCard } from "../components/BoothCard";
+import { BoothCardSkeleton } from "../components/BoothCardSkeleton";
 import { HallMap } from "../components/HallMap";
 
 export function Home() {
@@ -105,7 +106,13 @@ export function Home() {
 
         <div className="grid items-start gap-5 lg:grid-cols-[1fr_18rem]">
           <div className="order-2 min-w-0 lg:order-1">
-            {loading && <p className="py-8 text-center text-slate-400">Loading booths…</p>}
+            {loading && booths.length === 0 && (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" role="status" aria-label="Loading booths">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <BoothCardSkeleton key={i} />
+                ))}
+              </div>
+            )}
 
             {error && (
               <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-300">
@@ -119,14 +126,16 @@ export function Home() {
               </div>
             )}
 
-            {!loading && !error && visible.length > 0 && (
+            {!error && visible.length > 0 && (
               <>
                 <p className="mb-3 text-sm text-slate-400">
                   {visible.length} {visible.length === 1 ? "company" : "companies"}
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {visible.map((b) => (
-                    <BoothCard key={b.id} booth={b} />
+                  {visible.map((b, i) => (
+                    <div key={b.id} className="card-in flex [&>*]:min-w-0 [&>*]:flex-1" style={{ animationDelay: `${Math.min(i, 11) * 45}ms` }}>
+                      <BoothCard booth={b} />
+                    </div>
                   ))}
                 </div>
               </>
