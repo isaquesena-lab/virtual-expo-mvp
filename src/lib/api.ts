@@ -62,6 +62,11 @@ export async function getTakenStands(): Promise<string[]> {
   return data.taken;
 }
 
+export async function getConfig(): Promise<{ turnstile_site_key: string | null }> {
+  const res = await fetch("/api/config");
+  return parse<{ turnstile_site_key: string | null }>(res);
+}
+
 export interface CreateBoothResult {
   id: string;
   slug: string;

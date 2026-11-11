@@ -18,5 +18,18 @@
       "migrations_dir": "migrations"
     }
   ],
+  // Public (non-secret) config. Set TURNSTILE_SITE_KEY to activate the anti-bot
+  // widget on the registration form (pair it with the TURNSTILE_SECRET secret).
+  "vars": {
+    "TURNSTILE_SITE_KEY": ""
+  },
+  // Per-IP rate limit for public booth submissions (anti-spam / slot squatting).
+  "ratelimits": [
+    {
+      "name": "SUBMIT_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ],
   "observability": { "enabled": true }
 }

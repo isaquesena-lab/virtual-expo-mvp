@@ -58,6 +58,11 @@ app.get("/api/booths", async (c) => {
   return json({ booths: results });
 });
 
+// Public client config (no secrets). The Turnstile site key is public by design.
+app.get("/api/config", (c) =>
+  json({ turnstile_site_key: c.env.TURNSTILE_SITE_KEY || null }),
+);
+
 // Which stand slots are already taken (held by a non-rejected booth).
 // Returns codes only — no company or contact data.
 app.get("/api/stands", async (c) => {
@@ -82,6 +87,14 @@ app.get("/api/booths/:slug", async (c) => {
 
 // Public submission — stored as 'pending' until a moderator approves it.
 app.post("/api/booths", async (c) => {
+  const ip = c.req.header("cf-connecting-ip") ?? null;
+
+  // Per-IP rate limit (anti-spam / slot squatting).
+  const { success: underLimit } = await c.env.SUBMIT_LIMITER.limit({ key: `submit:${ip ?? "anon"}` });
+  if (!underLimit) {
+    return json({ error: "Too many submissions from your network. Please wait a minute and try again." }, 429);
+  }
+
   let body: unknown;
   try {
     body = await c.req.json();
@@ -95,7 +108,6 @@ app.post("/api/booths", async (c) => {
   }
   const data = parsed.data;
 
-  const ip = c.req.header("cf-connecting-ip") ?? null;
   const human = await verifyTurnstile(c.env.TURNSTILE_SECRET, data.turnstile_token, ip);
   if (!human) return json({ error: "Anti-bot verification failed" }, 403);
 

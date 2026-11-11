@@ -5,4 +5,8 @@ export interface Env {
   ADMIN_TOKEN?: string;
   /** Cloudflare Turnstile secret. When set, public submissions must pass a Turnstile check. */
   TURNSTILE_SECRET?: string;
+  /** Public Turnstile site key (plaintext var). When set, the widget renders on the form. */
+  TURNSTILE_SITE_KEY?: string;
+  /** Per-IP rate limiter for public booth submissions. */
+  SUBMIT_LIMITER: RateLimit;
 }

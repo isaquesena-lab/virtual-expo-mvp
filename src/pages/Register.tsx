@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { createBooth, getTakenStands, type CreateBoothResult } from "../lib/api";
+import { createBooth, getConfig, getTakenStands, type CreateBoothResult } from "../lib/api";
 import { CATEGORIES } from "../lib/types";
 import { PAVILIONS, pavilionByZone, standsForZone, TIER_LABELS, type Tier } from "../../shared/stands";
+import { Turnstile } from "../components/Turnstile";
 
 const INPUT =
   "mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30";
@@ -16,6 +17,14 @@ export function Register() {
   const [tier, setTier] = useState<Tier | "">("");
   const [standCode, setStandCode] = useState<string>("");
   const [taken, setTaken] = useState<Set<string>>(new Set());
+  const [siteKey, setSiteKey] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    getConfig()
+      .then((c) => setSiteKey(c.turnstile_site_key))
+      .catch(() => setSiteKey(null));
+  }, []);
 
   async function refreshTaken() {
     try {
@@ -42,6 +51,10 @@ export function Register() {
       setError("Please pick an available stand.");
       return;
     }
+    if (siteKey && !turnstileToken) {
+      setError("Please complete the anti-bot check below.");
+      return;
+    }
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -55,6 +68,7 @@ export function Register() {
         logo_url: String(form.get("logo_url") || "") || undefined,
         meet_url: String(form.get("meet_url") || ""),
         owner_email: String(form.get("owner_email") || ""),
+        turnstile_token: turnstileToken ?? undefined,
       });
       setResult(res);
     } catch (err) {
@@ -244,6 +258,13 @@ export function Register() {
           placeholder="you@company.com"
           hint="Used only to verify ownership and contact you — never for marketing."
         />
+
+        {siteKey && (
+          <div>
+            <span className={LABEL}>Anti-bot check</span>
+            <Turnstile siteKey={siteKey} onToken={setTurnstileToken} />
+          </div>
+        )}
 
         <button
           type="submit"
