@@ -174,7 +174,10 @@ test("Wrangler keeps the custom domain, rate limiter and disables alternative pu
   assert.equal(error, undefined);
   assert.equal(config.workers_dev, false);
   assert.equal(config.preview_urls, false);
-  assert.deepEqual(config.routes, [{ pattern: "wetexpo.prohound.io", custom_domain: true }]);
+  assert.deepEqual(config.routes, [
+    { pattern: "wetexpo.prohound.io", custom_domain: true },
+    { pattern: "wetexpo.com", custom_domain: true },
+  ]);
   assert.ok(config.vars.TURNSTILE_SITE_KEY);
   assert.equal(Object.hasOwn(config.vars, "TURNSTILE_SECRET"), false);
   assert.deepEqual(config.assets.run_worker_first, ["/api/*"]);

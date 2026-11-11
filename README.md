@@ -282,7 +282,13 @@ Every push to `main` runs the **Deploy** workflow: type check, build, apply remo
    pnpm deploy
    ```
 
-The first deploy ships to a free `*.workers.dev` subdomain; add a custom domain under `routes` in `wrangler.jsonc`.
+Production hostnames are declared as `custom_domain` routes in `wrangler.jsonc`
+(`workers_dev` and version URLs are disabled). Today: `wetexpo.prohound.io` (canonical)
+and `wetexpo.com` (second domain; `www.wetexpo.com` 301-redirects to the apex via a
+zone redirect rule). Both zones carry the same WAF posture: a country-level geoblock
+for the app host plus allowlisted admin/monitoring IPs, scanner and DDoS-ASN blocks,
+and threat-score challenges. When adding another domain, mirror those rules in its
+zone — the Worker itself is hostname-agnostic.
 
 ## Troubleshooting
 
