@@ -16,35 +16,42 @@ export function Home() {
   const [category, setCategory] = useState("");
   const [zone, setZone] = useState("");
   const [tier, setTier] = useState("");
+  const [liveOnly, setLiveOnly] = useState(false);
   // Filter selections are staged here and only applied on "Apply Filters".
   const [draft, setDraft] = useState({ category: "", zone: "", tier: "" });
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    const t = setTimeout(() => {
-      listBooths({ q, category, zone })
-        .then((data) => active && setBooths(data))
+    const load = () =>
+      listBooths({ q, category, zone, live: liveOnly })
+        .then((data) => active && (setBooths(data), setError(null)))
         .catch((e) => active && setError(e.message))
         .finally(() => active && setLoading(false));
-    }, 200);
+    const t = setTimeout(load, 200);
+    // Keep presence fresh while the tab is visible.
+    const poll = setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 30_000);
     return () => {
       active = false;
       clearTimeout(t);
+      clearInterval(poll);
     };
-  }, [q, category, zone]);
+  }, [q, category, zone, liveOnly]);
 
   const visible = useMemo(
     () => (tier ? booths.filter((b) => b.booth_code && STAND_BY_CODE.get(b.booth_code)?.tier === tier) : booths),
     [booths, tier],
   );
-  const hasFilters = Boolean(q || category || zone || tier);
+  const hasFilters = Boolean(q || category || zone || tier || liveOnly);
   const hasPending = Boolean(draft.category || draft.zone || draft.tier);
   function clearFilters() {
     setQ("");
     setCategory("");
     setZone("");
     setTier("");
+    setLiveOnly(false);
     setDraft({ category: "", zone: "", tier: "" });
   }
   return (
@@ -165,6 +172,15 @@ export function Home() {
                 placeholder="Tier"
                 options={(Object.keys(TIER_LABELS) as Tier[]).map((t) => ({ value: t, label: TIER_LABELS[t] }))}
               />
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={liveOnly}
+                  onChange={(e) => setLiveOnly(e.target.checked)}
+                  className="h-4 w-4 accent-emerald-400"
+                />
+                Live now only
+              </label>
               <button
                 type="submit"
                 className="w-full rounded-full border border-indigo-300/40 px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500 hover:to-fuchsia-500"

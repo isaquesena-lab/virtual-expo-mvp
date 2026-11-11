@@ -89,6 +89,11 @@ function PavilionPlan({
                 strokeWidth={booth ? 1.6 : 1}
                 style={booth ? { filter: `drop-shadow(0 0 4px ${color})` } : undefined}
               />
+              {booth?.is_live === 1 && (
+                <circle cx={cx + cell / 2} cy={cy - cell / 2} r={cell * 0.2} fill="#34d399" stroke="#0a0b14" strokeWidth="1.2">
+                  <animate attributeName="opacity" values="1;.35;1" dur="1.6s" repeatCount="indefinite" />
+                </circle>
+              )}
               {isSel && (
                 <rect
                   x={cx - cell / 2 - 3}
@@ -209,6 +214,7 @@ export function HallMap({ booths }: { booths: Booth[] }) {
               </p>
               <p className="mt-0.5 truncate text-base font-semibold text-white">
                 {selBooth ? selBooth.company_name : "Available stand"}
+                {selBooth?.is_live === 1 && <span className="ml-2 align-middle text-xs font-semibold text-emerald-300">● Live now</span>}
               </p>
               {selBooth?.tagline && <p className="truncate text-sm text-slate-400">{selBooth.tagline}</p>}
               {!selBooth && <p className="text-sm text-slate-400">This stand is still free — claim it for your company.</p>}

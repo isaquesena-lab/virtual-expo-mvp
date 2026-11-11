@@ -14,8 +14,12 @@ import { STAND_BY_CODE } from "../shared/stands";
 const PUBLIC_COLUMNS = `
   id, slug, company_name, tagline, description, category, zone, booth_code,
   position_x, position_y, logo_url, website_url, meet_url, status,
-  created_at, updated_at
+  created_at, updated_at,
+  CASE WHEN live_until > CAST(strftime('%s', 'now') AS INTEGER) THEN 1 ELSE 0 END AS is_live
 `;
+
+/** Seconds a heartbeat keeps a booth live. The owner page pings well inside this window. */
+const LIVE_TTL_SECONDS = 90;
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -36,6 +40,7 @@ app.get("/api/booths", async (c) => {
   const q = c.req.query("q")?.trim();
   const category = c.req.query("category")?.trim();
   const zone = c.req.query("zone")?.trim();
+  const liveOnly = c.req.query("live") === "1";
 
   const where: string[] = ["status = 'approved'"];
   const binds: unknown[] = [];
@@ -53,7 +58,10 @@ app.get("/api/booths", async (c) => {
     where.push(`zone = ?${binds.length}`);
   }
 
-  const sql = `SELECT ${PUBLIC_COLUMNS} FROM booths WHERE ${where.join(" AND ")} ORDER BY company_name COLLATE NOCASE ASC`;
+  if (liveOnly) where.push("live_until > CAST(strftime('%s', 'now') AS INTEGER)");
+
+  // Live booths first, then alphabetical.
+  const sql = `SELECT ${PUBLIC_COLUMNS} FROM booths WHERE ${where.join(" AND ")} ORDER BY is_live DESC, company_name COLLATE NOCASE ASC`;
   const { results } = await c.env.DB.prepare(sql).bind(...binds).all();
   return json({ booths: results });
 });
@@ -257,6 +265,45 @@ app.patch("/api/booths/:id", async (c) => {
     .bind(id)
     .first();
   return json({ booth });
+});
+
+// Live presence heartbeat. Requires the owner token; only approved booths can go live.
+app.post("/api/booths/:id/live", async (c) => {
+  const id = c.req.param("id");
+  const token = c.req.header("x-edit-token") ?? "";
+  if (!token) return json({ error: "Missing edit token" }, 401);
+  const row = await c.env.DB.prepare("SELECT edit_token_hash, status FROM booths WHERE id = ?")
+    .bind(id)
+    .first<{ edit_token_hash: string; status: string }>();
+  if (!row) return json({ error: "Booth not found" }, 404);
+  if (!timingSafeEqual(await hashEditToken(token), row.edit_token_hash)) {
+    return json({ error: "Invalid edit token" }, 403);
+  }
+  if (row.status !== "approved") {
+    return json({ error: "Only approved booths can go live" }, 409);
+  }
+  await c.env.DB.prepare(
+    "UPDATE booths SET live_until = CAST(strftime('%s', 'now') AS INTEGER) + ?1 WHERE id = ?2",
+  )
+    .bind(LIVE_TTL_SECONDS, id)
+    .run();
+  return json({ live: true, ttl: LIVE_TTL_SECONDS });
+});
+
+// Go offline immediately.
+app.delete("/api/booths/:id/live", async (c) => {
+  const id = c.req.param("id");
+  const token = c.req.header("x-edit-token") ?? "";
+  if (!token) return json({ error: "Missing edit token" }, 401);
+  const row = await c.env.DB.prepare("SELECT edit_token_hash FROM booths WHERE id = ?")
+    .bind(id)
+    .first<{ edit_token_hash: string }>();
+  if (!row) return json({ error: "Booth not found" }, 404);
+  if (!timingSafeEqual(await hashEditToken(token), row.edit_token_hash)) {
+    return json({ error: "Invalid edit token" }, 403);
+  }
+  await c.env.DB.prepare("UPDATE booths SET live_until = NULL WHERE id = ?").bind(id).run();
+  return json({ live: false });
 });
 
 /* --------------------------------- Admin --------------------------------- */
