@@ -1,0 +1,10 @@
+# Copy to `.dev.vars` for local development (never commit `.dev.vars`).
+# These become bindings on `c.env` in the Worker during `pnpm dev`.
+
+# Shared secret that protects the moderator endpoints (/api/admin/*).
+# Without it, the moderator area returns 503. Pick any strong random string.
+ADMIN_TOKEN="dev-moderator-token-change-me"
+
+# Optional: Cloudflare Turnstile secret for anti-bot on public submissions.
+# Leave unset in local dev to skip the check.
+# TURNSTILE_SECRET="0x..."

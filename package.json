@@ -1,0 +1,42 @@
+{
+  "name": "virtual-expo-mvp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "db:create": "wrangler d1 create virtual-expo-db",
+    "db:migrate:local": "wrangler d1 migrations apply virtual-expo-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply virtual-expo-db --remote",
+    "db:seed:local": "wrangler d1 execute virtual-expo-db --local --file=./seed.sql",
+    "db:seed:remote": "wrangler d1 execute virtual-expo-db --remote --file=./seed.sql",
+    "db:setup": "npm run db:migrate:local && npm run db:seed:local"
+  },
+  "dependencies": {
+    "hono": "^4.6.14",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.0.0",
+    "@cloudflare/workers-types": "^4.20250110.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "wrangler": "^4.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "workerd"]
+  }
+}
