@@ -5,6 +5,7 @@
 # Without it, the moderator area returns 503. Pick any strong random string.
 ADMIN_TOKEN="dev-moderator-token-change-me"
 
-# Optional: Cloudflare Turnstile secret for anti-bot on public submissions.
-# Leave unset in local dev to skip the check.
-# TURNSTILE_SECRET="0x..."
+# Optional: configure a matching Turnstile test key pair to exercise the widget locally.
+# Leave the secret unset to skip verification and hide the widget in local dev.
+# TURNSTILE_SITE_KEY="your-public-test-site-key"
+# TURNSTILE_SECRET="your-test-secret-key"

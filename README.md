@@ -38,6 +38,7 @@ example booths. The moderator area is at `/admin` (token = the `ADMIN_TOKEN` in 
 | `pnpm db:create` | Create the remote D1 database (run once) |
 | `pnpm deploy` | Build and deploy to Cloudflare |
 | `pnpm typecheck` | TypeScript check across app + worker |
+| `pnpm test` | Turnstile configuration, submission and rate-limit regression tests |
 
 ---
 
@@ -47,7 +48,7 @@ example booths. The moderator area is at `/admin` (token = the `ADMIN_TOKEN` in 
 index.html                 # SPA entry
 src/                       # React SPA (client)
   main.tsx                 # router (/, /booths/:slug, /register, /edit/:id, /admin)
-  components/              # Layout, BoothCard, HallMap
+  components/              # Layout, BoothCard, HallMap, Turnstile
   pages/                  # Home, BoothDetail, Register, EditBooth, Admin, NotFound
   lib/                    # api client + shared types
 worker/                    # Cloudflare Worker (Hono) — the JSON API at /api/*
@@ -67,6 +68,7 @@ the app does not relay audio or video.
 
 | Method | Path | Access |
 | --- | --- | --- |
+| `GET` | `/api/config` | Public — widget site key when Turnstile is enabled, otherwise `null` (never secrets) |
 | `GET` | `/api/booths?q=&category=&zone=` | Public — approved booths only |
 | `GET` | `/api/booths/:slug` | Public — approved booth detail |
 | `POST` | `/api/booths` | Public — creates a `pending` submission |
@@ -91,15 +93,75 @@ Public responses never include `owner_email` or `edit_token_hash`.
 3. **Set secrets** (never commit these):
    ```bash
    npx wrangler secret put ADMIN_TOKEN
-   # optional anti-bot:
-   npx wrangler secret put TURNSTILE_SECRET
    ```
 4. **Deploy:**
    ```bash
    pnpm deploy
    ```
 
-The first deploy ships to a `*.workers.dev` subdomain (free). Add a custom domain later.
+Production is configured for the custom domain `https://wetexpo.prohound.io`.
+The `workers_dev: false` and `preview_urls: false` settings disable the alternative
+`*.workers.dev` route and version/preview URLs so they cannot bypass the custom
+domain's zone-level WAF. These settings take effect after deployment; local development
+with `pnpm dev` is unchanged.
+
+### Geographic access policy (Cloudflare dashboard)
+
+The intended policy is **Lisbon, Portugal, plus explicit administrative/monitoring
+exceptions**. WAF rules are managed separately in the Cloudflare dashboard, not by
+this repository; deploying the Worker does not create or validate them.
+
+Use a custom rule with action **Block** matching:
+
+```text
+(http.host eq "wetexpo.prohound.io")
+and not (ip.src.country eq "PT" and ip.src.city eq "Lisbon")
+```
+
+Before enabling it, configure the approved exceptions. Place the block before any
+unrelated Skip rules that bypass remaining custom rules. Express exceptions explicitly
+in the block condition, or place only the intended exception Skip rules before it;
+review existing zone-wide skips rather than treating all of them as approved exceptions.
+IP Access rules with action Allow bypass custom rules independently of this ordering.
+A geographic Skip by itself does not block visitors outside Lisbon.
+
+Location is inferred from the client IP, not verified physical presence. VPNs and
+mobile networks may produce misleading city values; unknown locations match the block
+unless explicitly exempted. Validate access from Lisbon, denial from another Portuguese
+city and another country, and access for each approved exception. Confirm the rule ID
+in Security Events for blocked requests and verify that alternative Worker URLs are
+unavailable after deployment.
+
+### Turnstile configuration
+
+The public widget site key is configured as `vars.TURNSTILE_SITE_KEY` in
+`wrangler.jsonc`. The registration form loads it through `GET /api/config` only when
+`TURNSTILE_SECRET` is configured. Confirm the key and the allowed hostname
+`wetexpo.prohound.io` in the Turnstile dashboard before deploying.
+
+Deploy the widget integration before setting the secret on an existing deployment.
+The form requires a valid widget token when verification is enabled, clears expired
+tokens, and obtains a fresh token after every submission attempt. Loading failures
+block submission and offer a retry. The server verifies tokens before reserving a stand.
+Only public booth creation is protected by this widget; it is not a geographic access
+rule and does not protect browsing or moderator authentication.
+
+Without `TURNSTILE_SECRET`, the config endpoint returns a `null` site key and local
+registration works without the widget, preserving the development flow. If the secret
+is set but the site key is missing, the config endpoint returns 503 and the form stays
+blocked. To test locally with verification enabled, configure a matching test site key
+and secret in `.dev.vars` (see `.dev.vars.example`).
+
+Keep the secret key out of source files, public variables, and chat. If exposed,
+rotate it in the Turnstile dashboard. After deploying the widget integration, store the
+replacement through the interactive prompt:
+
+```bash
+npx wrangler secret put TURNSTILE_SECRET
+```
+
+Verify a real widget-backed submission and rejection of missing/invalid tokens before
+launching publicly.
 
 ---
 
