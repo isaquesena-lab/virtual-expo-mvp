@@ -29,14 +29,14 @@ export function BoothDetail() {
     };
   }, [slug]);
 
-  if (loading) return <p className="py-12 text-center text-slate-500">Loading…</p>;
+  if (loading) return <p className="py-12 text-center text-slate-400">Loading…</p>;
 
   if (notFound)
     return (
       <div className="py-12 text-center">
-        <h1 className="text-xl font-semibold text-slate-900">Booth not available</h1>
-        <p className="mt-2 text-slate-500">It may be pending review, hidden, or the link is wrong.</p>
-        <Link to="/" className="mt-4 inline-block text-indigo-600 hover:underline">
+        <h1 className="text-xl font-semibold text-slate-100">Booth not available</h1>
+        <p className="mt-2 text-slate-400">It may be pending review, hidden, or the link is wrong.</p>
+        <Link to="/" className="mt-4 inline-block text-indigo-300 hover:underline">
           ← Back to the hall
         </Link>
       </div>
@@ -45,8 +45,8 @@ export function BoothDetail() {
   if (error || !booth)
     return (
       <div className="py-12 text-center">
-        <p className="text-red-700">Could not load this booth: {error}</p>
-        <Link to="/" className="mt-4 inline-block text-indigo-600 hover:underline">
+        <p className="text-red-300">Could not load this booth: {error}</p>
+        <Link to="/" className="mt-4 inline-block text-indigo-300 hover:underline">
           ← Back to the hall
         </Link>
       </div>
@@ -54,7 +54,7 @@ export function BoothDetail() {
 
   return (
     <article className="mx-auto max-w-2xl">
-      <Link to="/" className="text-sm text-indigo-600 hover:underline">
+      <Link to="/" className="text-sm text-indigo-300 hover:underline">
         ← Back to the hall
       </Link>
 
@@ -63,36 +63,42 @@ export function BoothDetail() {
           <img
             src={booth.logo_url}
             alt=""
-            className="h-16 w-16 rounded-xl border border-slate-200 object-contain"
+            className="h-16 w-16 rounded-xl border border-white/10 bg-white/5 object-contain"
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="grid h-16 w-16 place-items-center rounded-xl bg-indigo-600 text-xl font-bold text-white">
+          <div className="grid h-16 w-16 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-xl font-bold text-white shadow-lg shadow-indigo-500/30">
             {booth.company_name.slice(0, 2).toUpperCase()}
           </div>
         )}
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{booth.company_name}</h1>
-          {booth.tagline && <p className="text-slate-600">{booth.tagline}</p>}
+          <h1 className="text-2xl font-bold text-white">{booth.company_name}</h1>
+          {booth.tagline && <p className="text-slate-400">{booth.tagline}</p>}
         </div>
       </header>
 
       <div className="mt-4 flex flex-wrap gap-2 text-xs">
-        <span className="rounded-full bg-indigo-50 px-3 py-1 font-medium text-indigo-700">{booth.category}</span>
-        {booth.zone && <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{booth.zone}</span>}
+        <span className="rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3 py-1 font-medium text-indigo-200">
+          {booth.category}
+        </span>
+        {booth.zone && (
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">{booth.zone}</span>
+        )}
         {booth.booth_code && (
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">Booth {booth.booth_code}</span>
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">
+            Stand {booth.booth_code}
+          </span>
         )}
       </div>
 
-      <p className="mt-6 whitespace-pre-line leading-relaxed text-slate-700">{booth.description}</p>
+      <p className="mt-6 whitespace-pre-line leading-relaxed text-slate-300">{booth.description}</p>
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         <a
           href={booth.meet_url}
           target="_blank"
           rel="noreferrer noopener"
-          className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+          className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-5 py-3 font-semibold text-white shadow-lg shadow-fuchsia-500/20 transition hover:brightness-110"
         >
           Join meeting ↗
         </a>
@@ -101,14 +107,14 @@ export function BoothDetail() {
             href={booth.website_url}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="inline-flex items-center justify-center rounded-xl border border-white/15 px-5 py-3 font-semibold text-slate-200 transition hover:bg-white/5"
           >
             Visit website ↗
           </a>
         )}
       </div>
 
-      <p className="mt-4 text-xs text-slate-400">
+      <p className="mt-4 text-xs text-slate-500">
         The meeting opens in a new tab on an external service. This directory does not host the call.
       </p>
     </article>

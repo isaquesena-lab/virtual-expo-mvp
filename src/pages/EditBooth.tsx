@@ -4,7 +4,6 @@ import { getManagedBooth, updateBooth } from "../lib/api";
 import type { Booth } from "../lib/types";
 import { CATEGORIES } from "../lib/types";
 
-/** Reads the capability token from the URL fragment (never sent to the server in logs). */
 function tokenFromHash(): string {
   const hash = window.location.hash.replace(/^#/, "");
   return new URLSearchParams(hash).get("token") ?? "";
@@ -13,25 +12,28 @@ function tokenFromHash(): string {
 const STATUS_COPY: Record<string, { label: string; className: string; note: string }> = {
   pending: {
     label: "Pending review",
-    className: "border-amber-200 bg-amber-50 text-amber-900",
-    note: "Your booth is awaiting moderator approval. It is not visible in the public hall yet — you'll see it there once it's approved.",
+    className: "border-amber-400/30 bg-amber-500/10 text-amber-200",
+    note: "Your booth is awaiting moderator approval. It is not visible in the public hall yet — you'll see it there once it's approved. Your stand is reserved for you.",
   },
   approved: {
     label: "Approved · live",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    className: "border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
     note: "Your booth is live in the public hall. Edits below go live immediately.",
   },
   rejected: {
     label: "Rejected",
-    className: "border-red-200 bg-red-50 text-red-900",
+    className: "border-red-400/30 bg-red-500/10 text-red-200",
     note: "A moderator rejected this listing. Edit it and it will be re-reviewed, or contact the moderators.",
   },
   hidden: {
     label: "Hidden",
-    className: "border-slate-200 bg-slate-100 text-slate-700",
+    className: "border-white/15 bg-white/5 text-slate-300",
     note: "This booth is currently hidden from the public hall.",
   },
 };
+
+const INPUT =
+  "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30";
 
 export function EditBooth() {
   const { id } = useParams<{ id: string }>();
@@ -61,10 +63,10 @@ export function EditBooth() {
   if (!token) {
     return (
       <div className="mx-auto max-w-xl py-12 text-center">
-        <h1 className="text-xl font-semibold text-slate-900">Missing edit token</h1>
-        <p className="mt-2 text-slate-500">
+        <h1 className="text-xl font-semibold text-slate-100">Missing edit token</h1>
+        <p className="mt-2 text-slate-400">
           Open the private edit link you received when submitting your booth (it ends with
-          <code className="mx-1 rounded bg-slate-100 px-1">#token=…</code>).
+          <code className="mx-1 rounded bg-white/10 px-1">#token=…</code>).
         </p>
       </div>
     );
@@ -93,14 +95,14 @@ export function EditBooth() {
     }
   }
 
-  if (loading) return <p className="py-12 text-center text-slate-500">Loading your booth…</p>;
+  if (loading) return <p className="py-12 text-center text-slate-400">Loading your booth…</p>;
 
   if (loadError)
     return (
       <div className="mx-auto max-w-xl py-12 text-center">
-        <h1 className="text-xl font-semibold text-slate-900">Couldn&apos;t open this booth</h1>
-        <p className="mt-2 text-slate-500">{loadError}</p>
-        <p className="mt-1 text-sm text-slate-400">Check that your edit link is complete and correct.</p>
+        <h1 className="text-xl font-semibold text-slate-100">Couldn&apos;t open this booth</h1>
+        <p className="mt-2 text-slate-400">{loadError}</p>
+        <p className="mt-1 text-sm text-slate-500">Check that your edit link is complete and correct.</p>
       </div>
     );
 
@@ -108,13 +110,13 @@ export function EditBooth() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="text-2xl font-bold text-slate-900">Manage your booth</h1>
-      {booth && <p className="mt-1 text-slate-600">{booth.company_name}</p>}
+      <h1 className="text-2xl font-bold text-white">Manage your booth</h1>
+      {booth && <p className="mt-1 text-slate-400">{booth.company_name}</p>}
 
       {status && (
         <div className={`mt-4 rounded-xl border p-4 ${status.className}`}>
           <p className="text-sm font-semibold">Status: {status.label}</p>
-          <p className="mt-1 text-sm">{status.note}</p>
+          <p className="mt-1 text-sm opacity-90">{status.note}</p>
           {booth?.status === "approved" && (
             <Link to={`/booths/${booth.slug}`} className="mt-2 inline-block text-sm font-medium underline">
               View your public booth page →
@@ -124,15 +126,19 @@ export function EditBooth() {
       )}
 
       {saved && (
-        <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">Saved. Your changes are stored.</p>
+        <p className="mt-4 rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+          Saved. Your changes are stored.
+        </p>
       )}
-      {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {error && (
+        <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>
+      )}
 
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
-        <input name="company_name" defaultValue={booth?.company_name ?? ""} placeholder="Company name" className="field" />
-        <input name="tagline" defaultValue={booth?.tagline ?? ""} placeholder="Tagline" className="field" />
-        <textarea name="description" defaultValue={booth?.description ?? ""} rows={4} placeholder="Description" className="field" />
-        <select name="category" defaultValue={booth?.category ?? ""} className="field">
+        <input name="company_name" defaultValue={booth?.company_name ?? ""} placeholder="Company name" className={INPUT} />
+        <input name="tagline" defaultValue={booth?.tagline ?? ""} placeholder="Tagline" className={INPUT} />
+        <textarea name="description" defaultValue={booth?.description ?? ""} rows={4} placeholder="Description" className={INPUT} />
+        <select name="category" defaultValue={booth?.category ?? ""} className={INPUT}>
           <option value="">Keep current category</option>
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>
@@ -140,19 +146,17 @@ export function EditBooth() {
             </option>
           ))}
         </select>
-        <input name="meet_url" type="url" defaultValue={booth?.meet_url ?? ""} placeholder="Meeting URL (https://…)" className="field" />
-        <input name="website_url" type="url" defaultValue={booth?.website_url ?? ""} placeholder="Website (https://…)" className="field" />
-        <input name="logo_url" type="url" defaultValue={booth?.logo_url ?? ""} placeholder="Logo URL (https://…)" className="field" />
+        <input name="meet_url" type="url" defaultValue={booth?.meet_url ?? ""} placeholder="Meeting URL (https://meet.google.com/…)" className={INPUT} />
+        <input name="website_url" type="url" defaultValue={booth?.website_url ?? ""} placeholder="Website (https://…)" className={INPUT} />
+        <input name="logo_url" type="url" defaultValue={booth?.logo_url ?? ""} placeholder="Logo URL (https://…)" className={INPUT} />
         <button
           type="submit"
           disabled={saving}
-          className="w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+          className="w-full rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-4 py-3 font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save changes"}
         </button>
       </form>
-
-      <style>{`.field{width:100%;border:1px solid #cbd5e1;border-radius:.5rem;padding:.5rem .75rem;font-size:.875rem;outline:none}.field:focus{border-color:#6366f1;box-shadow:0 0 0 2px #c7d2fe}`}</style>
     </div>
   );
 }
