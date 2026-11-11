@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getManagedBooth, updateBooth } from "../lib/api";
+import { deleteLogo, fetchOwnerLogo, getManagedBooth, updateBooth, uploadLogo } from "../lib/api";
+import { LogoPicker } from "../components/LogoPicker";
 import type { Booth } from "../lib/types";
 import { CATEGORIES } from "../lib/types";
 import { saveMyBooth } from "../lib/myBooth";
@@ -45,6 +46,8 @@ export function EditBooth() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [logoBlob, setLogoBlob] = useState<Blob | null>(null);
+  const [logoSrc, setLogoSrc] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id || !token) {
@@ -64,6 +67,28 @@ export function EditBooth() {
       active = false;
     };
   }, [id, token]);
+
+  // Resolve the current logo with the owner token (it may not be public yet).
+  const logoUrl = booth?.logo_url ?? null;
+  useEffect(() => {
+    let revoked = false;
+    let objectUrl: string | null = null;
+    if (!logoUrl) {
+      setLogoSrc(null);
+      return;
+    }
+    fetchOwnerLogo(logoUrl, token)
+      .then((u) => {
+        if (revoked) return;
+        objectUrl = u && u.startsWith("blob:") ? u : null;
+        setLogoSrc(u);
+      })
+      .catch(() => !revoked && setLogoSrc(null));
+    return () => {
+      revoked = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [logoUrl, token]);
 
   if (!token) {
     return (
@@ -85,12 +110,16 @@ export function EditBooth() {
     setSaving(true);
     const form = new FormData(e.currentTarget);
     const payload: Record<string, string> = {};
-    for (const key of ["company_name", "tagline", "description", "category", "website_url", "logo_url", "meet_url"]) {
+    for (const key of ["company_name", "tagline", "description", "category", "website_url", "meet_url"]) {
       const v = String(form.get(key) || "");
       if (v) payload[key] = v;
     }
     try {
-      const updated = await updateBooth(id, token, payload);
+      let updated = await updateBooth(id, token, payload);
+      if (logoBlob) {
+        updated = await uploadLogo(id, token, logoBlob);
+        setLogoBlob(null);
+      }
       setBooth(updated);
       setSaved(true);
     } catch (err) {
@@ -208,7 +237,24 @@ export function EditBooth() {
         </select>
         <input name="meet_url" type="url" defaultValue={booth?.meet_url ?? ""} placeholder="Meeting URL (https://meet.google.com/…)" className={INPUT} />
         <input name="website_url" type="url" defaultValue={booth?.website_url ?? ""} placeholder="Website (https://…)" className={INPUT} />
-        <input name="logo_url" type="url" defaultValue={booth?.logo_url ?? ""} placeholder="Logo URL (https://…)" className={INPUT} />
+        <div>
+          <p className="mb-2 text-sm font-medium text-slate-200">Company logo / photo</p>
+          <LogoPicker
+            key={booth?.logo_url ?? "none"}
+            currentUrl={logoSrc}
+            onChange={setLogoBlob}
+            disabled={saving}
+            onRemoveCurrent={async () => {
+              if (!id) return;
+              setError(null);
+              try {
+                setBooth(await deleteLogo(id, token));
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Could not remove the logo");
+              }
+            }}
+          />
+        </div>
         <button
           type="submit"
           disabled={saving}
