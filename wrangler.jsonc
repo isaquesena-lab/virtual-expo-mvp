@@ -6,7 +6,13 @@
   "main": "worker/index.ts",
   "workers_dev": false,
   "preview_urls": false,
-  "routes": [{ "pattern": "wetexpo.prohound.io", "custom_domain": true }],
+  // Both hostnames are served by this Worker. wetexpo.com is a second domain
+  // (zone managed in the same Cloudflare account); www.wetexpo.com 301-redirects
+  // to the apex via a zone redirect rule. wetexpo.prohound.io stays canonical.
+  "routes": [
+    { "pattern": "wetexpo.prohound.io", "custom_domain": true },
+    { "pattern": "wetexpo.com", "custom_domain": true },
+  ],
   "assets": {
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
