@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Booth } from "../lib/types";
+import { TIER_STYLE, tierGradient } from "../lib/tierStyle";
+import { TierPill } from "./TierPill";
 import { PAVILIONS, STANDS, STAND_BY_CODE, TIER_LABELS, type Pavilion, type Tier } from "../../shared/stands";
 
 /**
@@ -12,10 +14,12 @@ import { PAVILIONS, STANDS, STAND_BY_CODE, TIER_LABELS, type Pavilion, type Tier
  * percentages of a 16:10 hall, so 1% of width = 16 units and 1% of height = 10 units.
  */
 
+/** Representative solid colour per tier (glow, selection); fills use the tier gradient. */
 const TIER_COLOR: Record<Tier, string> = {
-  ALPHA: "#818cf8",
-  BETA: "#e879f9",
-  GROWTH: "#2dd4bf",
+  PARTNER: TIER_STYLE.PARTNER.from,
+  ALPHA: TIER_STYLE.ALPHA.from,
+  BETA: TIER_STYLE.BETA.from,
+  GROWTH: TIER_STYLE.GROWTH.from,
 };
 
 const UX = 16;
@@ -55,7 +59,7 @@ function PavilionPlan({
             key={t.tier}
             className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-300"
           >
-            <span className="h-2 w-2 rounded-full" style={{ background: TIER_COLOR[t.tier] }} />
+            <span className="h-2 w-2 rounded-full" style={{ background: tierGradient(t.tier, 135) }} />
             {TIER_LABELS[t.tier]} · {t.count}
           </span>
         ))}
@@ -67,6 +71,14 @@ function PavilionPlan({
         role="group"
         aria-label={`${pavilion.zone} floor plan`}
       >
+        <defs>
+          {pavilion.tiers.map((t) => (
+            <linearGradient key={t.tier} id={`tier-${pavilion.prefix}-${t.tier}`} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor={TIER_STYLE[t.tier].from} />
+              <stop offset="1" stopColor={TIER_STYLE[t.tier].to} />
+            </linearGradient>
+          ))}
+        </defs>
         <rect x={-pad / 2} y={-pad / 2} width={w + pad} height={h + pad} rx="18" className="fill-white/[0.03] stroke-white/15" strokeWidth="3" />
         {stands.map((s) => {
           const booth = boothByCode.get(s.code);
@@ -82,7 +94,7 @@ function PavilionPlan({
                 width={cell}
                 height={cell}
                 rx={cell * 0.2}
-                fill={color}
+                fill={booth ? `url(#tier-${pavilion.prefix}-${s.tier})` : color}
                 fillOpacity={booth ? 0.95 : 0.14}
                 stroke={booth ? "#fff" : color}
                 strokeOpacity={booth ? 0.7 : 0.35}
@@ -198,7 +210,7 @@ export function HallMap({ booths }: { booths: Booth[] }) {
         </span>
         {(Object.keys(TIER_LABELS) as Tier[]).map((t) => (
           <span key={t} className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full" style={{ background: TIER_COLOR[t] }} /> {TIER_LABELS[t]}
+            <span className="h-2 w-2 rounded-full" style={{ background: tierGradient(t, 135) }} /> {TIER_LABELS[t]}
           </span>
         ))}
         <span className="text-slate-500">Tap a stand for details</span>
@@ -209,8 +221,9 @@ export function HallMap({ booths }: { booths: Booth[] }) {
         <div className="sticky bottom-3 z-10 mt-4 rounded-2xl border border-white/15 bg-[#14152b]/95 p-4 shadow-xl shadow-black/40 backdrop-blur" role="status">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs text-slate-400">
-                {selStand.zone} · Stand {selStand.code} · {TIER_LABELS[selStand.tier]}
+              <p className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                {selStand.zone} · Stand {selStand.code}
+                <TierPill tier={selStand.tier} className="!px-2 !py-0.5 !text-[11px]" />
               </p>
               <p className="mt-0.5 truncate text-base font-semibold text-white">
                 {selBooth ? selBooth.company_name : "Available stand"}
