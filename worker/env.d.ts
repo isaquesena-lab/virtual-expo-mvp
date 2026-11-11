@@ -9,4 +9,6 @@ export interface Env {
   TURNSTILE_SITE_KEY?: string;
   /** Per-IP rate limiter for public booth submissions. */
   SUBMIT_LIMITER: RateLimit;
+  /** Per-IP rate limiter for owner mutations (live heartbeat, logo upload). */
+  MUTATE_LIMITER: RateLimit;
 }

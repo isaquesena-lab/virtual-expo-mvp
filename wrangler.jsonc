@@ -29,6 +29,12 @@
       "name": "SUBMIT_LIMITER",
       "namespace_id": "1001",
       "simple": { "limit": 5, "period": 60 }
+    },
+    // Per-IP rate limit for owner mutations (live heartbeat, logo upload).
+    {
+      "name": "MUTATE_LIMITER",
+      "namespace_id": "1002",
+      "simple": { "limit": 30, "period": 60 }
     }
   ],
   "observability": { "enabled": true }

@@ -184,6 +184,10 @@ test("Wrangler keeps the custom domain, rate limiter and disables alternative pu
     name: "SUBMIT_LIMITER",
     namespace_id: "1001",
     simple: { limit: 5, period: 60 },
+  }, {
+    name: "MUTATE_LIMITER",
+    namespace_id: "1002",
+    simple: { limit: 30, period: 60 },
   }]);
 });
 
