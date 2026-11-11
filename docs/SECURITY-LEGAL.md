@@ -33,7 +33,7 @@ This is an implementation checklist, not legal advice.
 
 ## Third-party meeting expectations
 
-- The exhibitor controls Google Meet admission and access policy.
+- The exhibitor controls Google Meet admission or YouTube Live access policy.
 - Meeting owners should check settings and be present to admit external visitors.
 - Show an external-service notice before or near the outbound button.
 - The application is not a video service and cannot guarantee room availability.
