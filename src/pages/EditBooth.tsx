@@ -70,6 +70,13 @@ export function EditBooth() {
   const [logoBlob, setLogoBlob] = useState<Blob | null>(null);
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+
+  // The "Saved" confirmation fades away on its own.
+  useEffect(() => {
+    if (!saved) return;
+    const t = setTimeout(() => setSaved(false), 4500);
+    return () => clearTimeout(t);
+  }, [saved]);
   const [live, setLive] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
   const [meetingType, setMeetingType] = useState<MeetingType>("google_meet");
@@ -230,12 +237,12 @@ export function EditBooth() {
       )}
 
       {saved && (
-        <p className="mt-4 rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+        <p role="status" className="msg-in mt-4 rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
           Saved. Your changes are stored.
         </p>
       )}
       {error && (
-        <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>
+        <p role="alert" className="msg-in mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>
       )}
 
       {booth?.status === "approved" && (
@@ -261,7 +268,7 @@ export function EditBooth() {
             </button>
           </div>
           {live && <p className="mt-2 text-xs font-medium text-emerald-200">You are live.</p>}
-          {liveError && <p className="mt-2 text-xs text-red-300">{liveError}</p>}
+          {liveError && <p role="alert" className="msg-in mt-2 text-xs text-red-300">{liveError}</p>}
         </section>
       )}
 
@@ -319,7 +326,7 @@ export function EditBooth() {
             )}
           </div>
           {dirty && (
-            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
+            <span className="msg-in rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
               Unsaved changes
             </span>
           )}
