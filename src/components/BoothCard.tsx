@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { Booth } from "../lib/types";
 import { LiveBadge } from "./LiveBadge";
-import { STAND_BY_CODE, TIER_LABELS } from "../../shared/stands";
+import { TierPill } from "./TierPill";
+import { STAND_BY_CODE } from "../../shared/stands";
 
 function initials(name: string): string {
   return name
@@ -60,11 +61,7 @@ export function BoothCard({ booth }: { booth: Booth }) {
         </div>
         <div className="flex flex-col items-end gap-1.5">
           {booth.is_live === 1 && <LiveBadge />}
-          {stand && (
-            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200">
-              {TIER_LABELS[stand.tier]}
-            </span>
-          )}
+          {stand && <TierPill tier={stand.tier} />}
         </div>
       </div>
 

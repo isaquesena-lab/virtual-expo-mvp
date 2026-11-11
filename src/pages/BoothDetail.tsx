@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiError, getBooth } from "../lib/api";
 import type { Booth } from "../lib/types";
-import { STAND_BY_CODE, TIER_LABELS } from "../../shared/stands";
+import { TierPill } from "../components/TierPill";
+import { STAND_BY_CODE } from "../../shared/stands";
 
 function initials(name: string): string {
   return name
@@ -126,13 +127,7 @@ export function BoothDetail() {
         {/* Right: details card */}
         <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
-            {stand ? (
-              <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200">
-                {TIER_LABELS[stand.tier]}
-              </span>
-            ) : (
-              <span />
-            )}
+            {stand ? <TierPill tier={stand.tier} /> : <span />}
             <button
               type="button"
               onClick={copyLink}
@@ -170,7 +165,6 @@ export function BoothDetail() {
           <div className="mt-5 flex flex-wrap gap-2">
             <span className={CHIP}>{booth.category}</span>
             {booth.zone && <span className={CHIP}>{booth.zone}</span>}
-            {stand && <span className={CHIP}>Tier: {TIER_LABELS[stand.tier]}</span>}
           </div>
 
           <hr className="my-5 border-white/10" />
