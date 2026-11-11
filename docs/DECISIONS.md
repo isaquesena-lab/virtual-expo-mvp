@@ -8,7 +8,7 @@
 | D-002 | React + Vite + TypeScript | Thin client with fast static deployment |
 | D-003 | Cloudflare Workers Static Assets + Worker API | One deployable service, no server fleet |
 | D-004 | Cloudflare D1 | Small relational metadata store |
-| D-005 | External Google Meet URL per booth | Avoid custom video and authentication integrations |
+| D-005 | External Google Meet or YouTube Live URL per booth | Avoid custom video and authentication integrations |
 | D-006 | Public read access; moderated exhibitor registration | Lower visitor friction, reduce impersonation |
 | D-007 | Original map/grid unless reuse permission is obtained | Avoid licensing and data sourcing problems |
 
