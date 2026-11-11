@@ -115,10 +115,8 @@ export async function adminListBooths(token: string, status?: string): Promise<B
 
 export interface AdminUpdatePayload {
   status?: string;
-  zone?: string | null;
+  /** Assign a stand by code (zone + coordinates derived server-side); null un-places. */
   booth_code?: string | null;
-  position_x?: number | null;
-  position_y?: number | null;
 }
 
 export async function adminUpdateBooth(

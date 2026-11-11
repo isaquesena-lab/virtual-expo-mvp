@@ -25,6 +25,21 @@ const optionalHttpsUrl = z
   .optional()
   .transform((v) => (v ? v : undefined));
 
+/** Allowed hosts for the exhibitor meeting link. Keep narrow to prevent phishing links. */
+export const MEET_HOSTS = ["meet.google.com"];
+
+/** An https URL whose host is an allowlisted meeting provider. */
+const meetUrl = httpsUrl.refine(
+  (u) => {
+    try {
+      return MEET_HOSTS.includes(new URL(u).hostname.toLowerCase());
+    } catch {
+      return false;
+    }
+  },
+  { message: `Meeting URL must be a Google Meet link (${MEET_HOSTS.join(", ")})` },
+);
+
 /** Public submission payload (POST /api/booths). */
 export const createBoothSchema = z.object({
   company_name: z.string().trim().min(2).max(120),
@@ -36,7 +51,7 @@ export const createBoothSchema = z.object({
   booth_code: z.string().trim().min(1).max(40),
   website_url: optionalHttpsUrl,
   logo_url: optionalHttpsUrl,
-  meet_url: httpsUrl,
+  meet_url: meetUrl,
   owner_email: z.string().trim().email().max(254),
   // Anti-bot token from the client widget; verified server-side when configured.
   turnstile_token: z.string().optional(),
@@ -52,19 +67,20 @@ export const editBoothSchema = z
     category: z.enum(CATEGORIES),
     website_url: optionalHttpsUrl,
     logo_url: optionalHttpsUrl,
-    meet_url: httpsUrl,
+    meet_url: meetUrl,
   })
   .partial();
 export type EditBoothInput = z.infer<typeof editBoothSchema>;
 
-/** Moderator actions (PATCH /api/admin/booths/:id). */
+/**
+ * Moderator actions (PATCH /api/admin/booths/:id). `booth_code` assigns a stand by
+ * code (zone + map coordinates are derived server-side from the floor plan); null
+ * un-places the booth. Arbitrary zones/coordinates are not accepted.
+ */
 export const adminUpdateSchema = z
   .object({
     status: z.enum(["pending", "approved", "rejected", "hidden"]).optional(),
-    zone: z.string().trim().max(80).nullish(),
     booth_code: z.string().trim().max(40).nullish(),
-    position_x: z.number().min(0).max(100).nullish(),
-    position_y: z.number().min(0).max(100).nullish(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "No fields to update" });
 export type AdminUpdateInput = z.infer<typeof adminUpdateSchema>;

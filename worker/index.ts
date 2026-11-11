@@ -20,7 +20,14 @@ const PUBLIC_COLUMNS = `
 const app = new Hono<{ Bindings: Env }>();
 
 const json = (data: unknown, status = 200) =>
-  Response.json(data as Record<string, unknown>, { status });
+  Response.json(data as Record<string, unknown>, {
+    status,
+    headers: {
+      // API responses are per-request and may include private data; never cache.
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
 
 /* --------------------------------- Public -------------------------------- */
 
@@ -275,20 +282,50 @@ admin.patch("/booths/:id", async (c) => {
     return json({ error: "Validation failed", issues: parsed.error.flatten() }, 422);
   }
 
+  const data = parsed.data;
   const sets: string[] = [];
   const binds: unknown[] = [];
-  for (const [key, value] of Object.entries(parsed.data)) {
-    binds.push(value ?? null);
-    sets.push(`${key} = ?${binds.length}`);
+
+  if (data.status !== undefined) {
+    binds.push(data.status);
+    sets.push(`status = ?${binds.length}`);
   }
+
+  if (data.booth_code !== undefined) {
+    if (data.booth_code === null || data.booth_code === "") {
+      // Un-place the booth from the map.
+      sets.push("booth_code = NULL", "zone = NULL", "position_x = NULL", "position_y = NULL");
+    } else {
+      const stand = STAND_BY_CODE.get(data.booth_code);
+      if (!stand) return json({ error: "Unknown stand slot" }, 422);
+      binds.push(stand.code);
+      sets.push(`booth_code = ?${binds.length}`);
+      binds.push(stand.zone);
+      sets.push(`zone = ?${binds.length}`);
+      binds.push(stand.x);
+      sets.push(`position_x = ?${binds.length}`);
+      binds.push(stand.y);
+      sets.push(`position_y = ?${binds.length}`);
+    }
+  }
+
+  if (sets.length === 0) return json({ error: "No fields to update" }, 422);
   sets.push("updated_at = CURRENT_TIMESTAMP");
   binds.push(id);
 
-  const info = await c.env.DB.prepare(
-    `UPDATE booths SET ${sets.join(", ")} WHERE id = ?${binds.length}`,
-  )
-    .bind(...binds)
-    .run();
+  let info;
+  try {
+    info = await c.env.DB.prepare(
+      `UPDATE booths SET ${sets.join(", ")} WHERE id = ?${binds.length}`,
+    )
+      .bind(...binds)
+      .run();
+  } catch (err) {
+    if (String(err).includes("UNIQUE")) {
+      return json({ error: "That stand is already taken by another booth.", code: "slot_taken" }, 409);
+    }
+    throw err;
+  }
   if (!info.meta.changes) return json({ error: "Booth not found" }, 404);
 
   const booth = await c.env.DB.prepare("SELECT * FROM booths WHERE id = ?")

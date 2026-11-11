@@ -136,16 +136,12 @@ export function Admin() {
               </button>
               <button
                 onClick={() => {
-                  const zone = prompt("Zone (e.g. North Hall):", b.zone ?? "") ?? undefined;
-                  const booth_code = prompt("Booth code (e.g. N-12):", b.booth_code ?? "") ?? undefined;
-                  const px = prompt("Map X 0–100:", b.position_x?.toString() ?? "");
-                  const py = prompt("Map Y 0–100:", b.position_y?.toString() ?? "");
-                  act(b.id, {
-                    zone,
-                    booth_code,
-                    position_x: px ? Number(px) : null,
-                    position_y: py ? Number(py) : null,
-                  });
+                  const code = prompt(
+                    "Stand code (e.g. N-12). Leave blank to un-place from the map:",
+                    b.booth_code ?? "",
+                  );
+                  if (code === null) return; // cancelled
+                  act(b.id, { booth_code: code.trim() === "" ? null : code.trim().toUpperCase() });
                 }}
                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
