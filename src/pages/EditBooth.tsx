@@ -8,10 +8,11 @@ import {
   sendLiveHeartbeat,
   updateBooth,
   uploadLogo,
+  type CreateBoothPayload,
 } from "../lib/api";
 import { LogoPicker } from "../components/LogoPicker";
-import type { Booth } from "../lib/types";
-import { CATEGORIES } from "../lib/types";
+import type { Booth, MeetingType } from "../lib/types";
+import { CATEGORIES, MEETING_TYPE_COPY } from "../lib/types";
 import { saveMyBooth } from "../lib/myBooth";
 
 function tokenFromHash(): string {
@@ -71,6 +72,7 @@ export function EditBooth() {
   const [dirty, setDirty] = useState(false);
   const [live, setLive] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [meetingType, setMeetingType] = useState<MeetingType>("google_meet");
 
   // While "live" is on, ping every 30s (server TTL is 90s). Closing the tab or
   // losing the connection simply lets the presence expire.
@@ -107,6 +109,7 @@ export function EditBooth() {
       .then((b) => {
         if (!active) return;
         setBooth(b);
+        setMeetingType(b.meeting_type ?? "google_meet");
         saveMyBooth({ id, token });
       })
       .catch((e) => active && setLoadError(e instanceof Error ? e.message : "Could not load booth"))
@@ -161,8 +164,8 @@ export function EditBooth() {
     setSaved(false);
     setSaving(true);
     const form = new FormData(e.currentTarget);
-    const payload: Record<string, string> = {};
-    for (const key of ["company_name", "tagline", "description", "category", "website_url", "meet_url"]) {
+    const payload: Partial<CreateBoothPayload> = { meeting_type: meetingType };
+    for (const key of ["company_name", "tagline", "description", "category", "website_url", "meet_url"] as const) {
       const v = String(form.get(key) || "");
       if (v) payload[key] = v;
     }
@@ -190,7 +193,7 @@ export function EditBooth() {
     setSaving(true);
     const meet = String(new FormData(e.currentTarget).get("new_meet_url") || "").trim();
     try {
-      const updated = await updateBooth(id, token, { meet_url: meet });
+      const updated = await updateBooth(id, token, { meeting_type: meetingType, meet_url: meet });
       setBooth(updated);
       setSaved(true);
     } catch (err) {
@@ -270,15 +273,16 @@ export function EditBooth() {
       )}
 
       <section className="mt-6 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
-        <h2 className="text-sm font-semibold text-amber-100">Meeting link</h2>
-        <p className="mt-1 text-sm text-amber-100/90">
+        <h2 className="text-sm font-semibold text-amber-100">{MEETING_TYPE_COPY[meetingType].label} link</h2>
+        {meetingType === "google_meet" && <p className="mt-1 text-sm text-amber-100/90">
           Google Meet links from accounts without Google Workspace end after <strong>1 hour</strong>. When yours
           expires, create a new meeting at{" "}
           <a href="https://meet.google.com/new" target="_blank" rel="noopener noreferrer" className="underline">
             meet.google.com/new
           </a>{" "}
           and paste it here — visitors get the new link immediately.
-        </p>
+        </p>}
+        {meetingType === "youtube_live" && <p className="mt-1 text-sm text-amber-100/90">Replace this URL whenever you schedule a new YouTube Live stream.</p>}
         {booth?.meet_url && (
           <p className="mt-2 break-all text-xs text-amber-100/70">
             Current:{" "}
@@ -293,7 +297,7 @@ export function EditBooth() {
             name="new_meet_url"
             type="url"
             required
-            placeholder="https://meet.google.com/xxx-xxxx-xxx"
+            placeholder={MEETING_TYPE_COPY[meetingType].placeholder}
             className={INPUT}
           />
           <button
@@ -347,8 +351,14 @@ export function EditBooth() {
             ))}
           </select>
         </Field>
-        <Field label="Meeting link" hint="Where the Join meeting button sends visitors.">
-          <input name="meet_url" type="url" defaultValue={booth?.meet_url ?? ""} placeholder="https://meet.google.com/…" className={INPUT} />
+        <Field label="How visitors join" hint="Choose the service that hosts this booth's live session.">
+          <select name="meeting_type" value={meetingType} onChange={(e) => setMeetingType(e.target.value as MeetingType)} className={INPUT}>
+            <option value="google_meet">Google Meet</option>
+            <option value="youtube_live">YouTube Live</option>
+          </select>
+        </Field>
+        <Field label={`${MEETING_TYPE_COPY[meetingType].label} link`} hint={MEETING_TYPE_COPY[meetingType].hint}>
+          <input key={meetingType} name="meet_url" type="url" defaultValue={booth?.meet_url ?? ""} placeholder={MEETING_TYPE_COPY[meetingType].placeholder} className={INPUT} />
         </Field>
         <Field label="Website" hint="Optional link to your company site.">
           <input name="website_url" type="url" defaultValue={booth?.website_url ?? ""} placeholder="https://…" className={INPUT} />
