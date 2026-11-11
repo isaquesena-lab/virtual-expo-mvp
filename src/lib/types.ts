@@ -15,6 +15,8 @@ export interface Booth {
   status: string;
   created_at: string;
   updated_at: string;
+  /** 1 while the exhibitor is present (heartbeat within the last ~90s). */
+  is_live: number;
 }
 
 /** Keep in sync with worker/lib/validation.ts CATEGORIES. */

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { Booth } from "../lib/types";
+import { LiveBadge } from "./LiveBadge";
 import { STAND_BY_CODE, TIER_LABELS } from "../../shared/stands";
 
 function initials(name: string): string {
@@ -57,11 +58,14 @@ export function BoothCard({ booth }: { booth: Booth }) {
             </span>
           )}
         </div>
-        {stand && (
-          <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200">
-            {TIER_LABELS[stand.tier]}
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1.5">
+          {booth.is_live === 1 && <LiveBadge />}
+          {stand && (
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200">
+              {TIER_LABELS[stand.tier]}
+            </span>
+          )}
+        </div>
       </div>
 
       <h3 className="mt-4 truncate text-base font-semibold text-slate-100 group-hover:text-white" title={booth.company_name}>
@@ -86,7 +90,7 @@ export function BoothCard({ booth }: { booth: Booth }) {
       </ul>
 
       <span className="mt-5 inline-flex items-center justify-center gap-2 rounded-full border border-indigo-300/40 px-4 py-2 text-sm font-semibold text-slate-100 transition group-hover:border-transparent group-hover:bg-gradient-to-r group-hover:from-indigo-500 group-hover:to-fuchsia-500 group-hover:text-white">
-        Visit booth →
+        {booth.is_live === 1 ? "Join now →" : "Visit booth →"}
       </span>
     </Link>
   );

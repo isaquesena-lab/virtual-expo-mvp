@@ -24,6 +24,7 @@ export interface BoothFilters {
   q?: string;
   category?: string;
   zone?: string;
+  live?: boolean;
 }
 
 export async function listBooths(filters: BoothFilters = {}): Promise<Booth[]> {
@@ -31,6 +32,7 @@ export async function listBooths(filters: BoothFilters = {}): Promise<Booth[]> {
   if (filters.q) params.set("q", filters.q);
   if (filters.category) params.set("category", filters.category);
   if (filters.zone) params.set("zone", filters.zone);
+  if (filters.live) params.set("live", "1");
   const qs = params.toString();
   const res = await fetch(`/api/booths${qs ? `?${qs}` : ""}`);
   const data = await parse<{ booths: Booth[] }>(res);
@@ -163,4 +165,23 @@ export async function adminUpdateBooth(
   });
   const data = await parse<{ booth: Booth }>(res);
   return data.booth;
+}
+
+/* ------------------------------ Live presence ----------------------------- */
+
+export async function sendLiveHeartbeat(id: string, token: string): Promise<void> {
+  const res = await fetch(`/api/booths/${encodeURIComponent(id)}/live`, {
+    method: "POST",
+    headers: { "x-edit-token": token },
+  });
+  await parse<{ live: boolean }>(res);
+}
+
+/** keepalive lets this finish while the tab is closing. */
+export function goOffline(id: string, token: string): Promise<Response> {
+  return fetch(`/api/booths/${encodeURIComponent(id)}/live`, {
+    method: "DELETE",
+    headers: { "x-edit-token": token },
+    keepalive: true,
+  });
 }

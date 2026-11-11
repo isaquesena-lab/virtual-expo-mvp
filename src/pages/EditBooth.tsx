@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { deleteLogo, fetchOwnerLogo, getManagedBooth, updateBooth, uploadLogo } from "../lib/api";
+import {
+  deleteLogo,
+  fetchOwnerLogo,
+  getManagedBooth,
+  goOffline,
+  sendLiveHeartbeat,
+  updateBooth,
+  uploadLogo,
+} from "../lib/api";
 import { LogoPicker } from "../components/LogoPicker";
 import type { Booth } from "../lib/types";
 import { CATEGORIES } from "../lib/types";
@@ -48,6 +56,33 @@ export function EditBooth() {
   const [saved, setSaved] = useState(false);
   const [logoBlob, setLogoBlob] = useState<Blob | null>(null);
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
+  const [live, setLive] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  // While "live" is on, ping every 30s (server TTL is 90s). Closing the tab or
+  // losing the connection simply lets the presence expire.
+  useEffect(() => {
+    if (!live || !id || !token) return;
+    let stopped = false;
+    const ping = () =>
+      sendLiveHeartbeat(id, token)
+        .then(() => !stopped && setLiveError(null))
+        .catch((e) => {
+          if (stopped) return;
+          setLiveError(e instanceof Error ? e.message : "Presence update failed");
+          setLive(false);
+        });
+    void ping();
+    const timer = setInterval(ping, 30_000);
+    const onHide = () => void goOffline(id, token).catch(() => {});
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      window.removeEventListener("pagehide", onHide);
+      void goOffline(id, token).catch(() => {});
+    };
+  }, [live, id, token]);
 
   useEffect(() => {
     if (!id || !token) {
@@ -184,6 +219,33 @@ export function EditBooth() {
       )}
       {error && (
         <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>
+      )}
+
+      {booth?.status === "approved" && (
+        <section className="mt-6 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-emerald-100">Live presence</h2>
+              <p className="mt-1 text-sm text-emerald-100/90">
+                Turn this on when you are in your meeting room. Your booth shows a <strong>Live now</strong> badge
+                and appears in the &ldquo;Live now only&rdquo; filter. Keep this page open: it checks in every 30
+                seconds, and you go offline automatically a minute or so after closing it.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={live}
+              onClick={() => setLive((v) => !v)}
+              className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition ${live ? "bg-emerald-400" : "bg-white/20"}`}
+            >
+              <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition ${live ? "translate-x-5" : ""}`} />
+              <span className="sr-only">Live presence</span>
+            </button>
+          </div>
+          {live && <p className="mt-2 text-xs font-medium text-emerald-200">You are live.</p>}
+          {liveError && <p className="mt-2 text-xs text-red-300">{liveError}</p>}
+        </section>
       )}
 
       <section className="mt-6 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
