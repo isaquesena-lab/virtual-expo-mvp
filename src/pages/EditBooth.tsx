@@ -4,8 +4,8 @@ import {
   deleteLogo,
   fetchOwnerLogo,
   getManagedBooth,
+  goLive,
   goOffline,
-  sendLiveHeartbeat,
   updateBooth,
   uploadLogo,
 } from "../lib/api";
@@ -69,33 +69,37 @@ export function EditBooth() {
   const [logoBlob, setLogoBlob] = useState<Blob | null>(null);
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
-  const [live, setLive] = useState(false);
+  const [liveUntil, setLiveUntil] = useState<number | null>(null);
+  const [liveMinutes, setLiveMinutes] = useState(60);
+  const [liveBusy, setLiveBusy] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
-  // While "live" is on, ping every 30s (server TTL is 90s). Closing the tab or
-  // losing the connection simply lets the presence expire.
+  // Re-render every 20s so "live until" flips to off when it expires.
   useEffect(() => {
-    if (!live || !id || !token) return;
-    let stopped = false;
-    const ping = () =>
-      sendLiveHeartbeat(id, token)
-        .then(() => !stopped && setLiveError(null))
-        .catch((e) => {
-          if (stopped) return;
-          setLiveError(e instanceof Error ? e.message : "Presence update failed");
-          setLive(false);
-        });
-    void ping();
-    const timer = setInterval(ping, 30_000);
-    const onHide = () => void goOffline(id, token).catch(() => {});
-    window.addEventListener("pagehide", onHide);
-    return () => {
-      stopped = true;
-      clearInterval(timer);
-      window.removeEventListener("pagehide", onHide);
-      void goOffline(id, token).catch(() => {});
-    };
-  }, [live, id, token]);
+    const t = setInterval(() => setNow(Date.now()), 20_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const isLive = liveUntil !== null && liveUntil * 1000 > now;
+
+  async function changeLive(action: "on" | "off") {
+    if (!id) return;
+    setLiveBusy(true);
+    setLiveError(null);
+    try {
+      if (action === "on") setLiveUntil(await goLive(id, token, liveMinutes));
+      else {
+        await goOffline(id, token);
+        setLiveUntil(null);
+      }
+      setNow(Date.now());
+    } catch (e) {
+      setLiveError(e instanceof Error ? e.message : "Could not update live status");
+    } finally {
+      setLiveBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!id || !token) {
@@ -107,6 +111,7 @@ export function EditBooth() {
       .then((b) => {
         if (!active) return;
         setBooth(b);
+        setLiveUntil(b.live_until ?? null);
         saveMyBooth({ id, token });
       })
       .catch((e) => active && setLoadError(e instanceof Error ? e.message : "Could not load booth"))
@@ -237,27 +242,51 @@ export function EditBooth() {
 
       {booth?.status === "approved" && (
         <section className="mt-6 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold text-emerald-100">Live presence</h2>
-              <p className="mt-1 text-sm text-emerald-100/90">
-                Turn this on when you are in your meeting room. Your booth shows a <strong>Live now</strong> badge
-                and appears in the &ldquo;Live now only&rdquo; filter. Keep this page open: it checks in every 30
-                seconds, and you go offline automatically a minute or so after closing it.
-              </p>
-            </div>
+          <h2 className="text-sm font-semibold text-emerald-100">Live now</h2>
+          <p className="mt-1 text-sm text-emerald-100/90">
+            Show a <strong>Live now</strong> badge on your booth while you are in your meeting room. It is saved on
+            the server for the time you choose, so you can leave this page. It switches off by itself when the time
+            is up, or any time with the button below.
+          </p>
+          {isLive ? (
+            <p className="mt-3 text-sm font-semibold text-emerald-200">
+              You are live until{" "}
+              {new Date(liveUntil! * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.
+            </p>
+          ) : (
+            <p className="mt-3 text-sm text-emerald-100/70">You are not live right now.</p>
+          )}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <select
+              value={liveMinutes}
+              onChange={(e) => setLiveMinutes(Number(e.target.value))}
+              aria-label="Live duration"
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+            >
+              <option value={30}>30 minutes</option>
+              <option value={60}>1 hour</option>
+              <option value={120}>2 hours</option>
+              <option value={240}>4 hours</option>
+            </select>
             <button
               type="button"
-              role="switch"
-              aria-checked={live}
-              onClick={() => setLive((v) => !v)}
-              className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition ${live ? "bg-emerald-400" : "bg-white/20"}`}
+              onClick={() => changeLive("on")}
+              disabled={liveBusy}
+              className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:brightness-110 disabled:opacity-60"
             >
-              <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition ${live ? "translate-x-5" : ""}`} />
-              <span className="sr-only">Live presence</span>
+              {isLive ? "Extend" : "Go live"}
             </button>
+            {isLive && (
+              <button
+                type="button"
+                onClick={() => changeLive("off")}
+                disabled={liveBusy}
+                className="rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/5 disabled:opacity-60"
+              >
+                Go offline
+              </button>
+            )}
           </div>
-          {live && <p className="mt-2 text-xs font-medium text-emerald-200">You are live.</p>}
           {liveError && <p className="mt-2 text-xs text-red-300">{liveError}</p>}
         </section>
       )}
