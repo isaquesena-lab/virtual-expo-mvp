@@ -31,6 +31,7 @@ function NavToggle() {
 }
 
 export function Layout({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
   const mine = loadMyBooth();
   return (
     <div className="flex min-h-screen flex-col">
@@ -50,7 +51,10 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</main>
+      {/* key on the path so each page re-runs the soft entrance animation */}
+      <main key={pathname} className="page-in mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+        {children}
+      </main>
 
       <footer className="border-t border-white/10 bg-[#0a0b14]">
         <div className="mx-auto max-w-5xl space-y-2 px-4 py-6 text-sm text-slate-400">
