@@ -1,14 +1,33 @@
 import type { ReactNode } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { editPath, loadMyBooth } from "../lib/myBooth";
 
-function navClass({ isActive }: { isActive: boolean }): string {
-  return [
-    "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-    isActive
-      ? "bg-indigo-500/20 text-white ring-1 ring-indigo-400/40"
-      : "text-slate-300 hover:bg-white/5 hover:text-white",
-  ].join(" ");
+/**
+ * iOS-style segmented switch for the two main destinations. A single gradient thumb
+ * glides between the segments (soft ease-out, disabled under prefers-reduced-motion).
+ * Off these two sections (booth page, edit, admin) the thumb fades out.
+ */
+function NavToggle() {
+  const { pathname } = useLocation();
+  const position = pathname === "/register" ? 1 : pathname === "/" || pathname.startsWith("/booths/") ? 0 : -1;
+  const seg =
+    "relative z-10 flex items-center justify-center whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-semibold transition-colors duration-500 ease-out motion-reduce:transition-none";
+
+  return (
+    <div className="relative grid grid-cols-2 rounded-full border border-white/10 bg-white/5 p-1">
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/25 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+        style={{ transform: `translateX(${Math.max(position, 0) * 100}%)`, opacity: position < 0 ? 0 : 1 }}
+      />
+      <NavLink to="/" end className={`${seg} ${position === 0 ? "text-white" : "text-slate-300 hover:text-white"}`}>
+        Hall
+      </NavLink>
+      <NavLink to="/register" className={`${seg} ${position === 1 ? "text-white" : "text-slate-300 hover:text-white"}`}>
+        List a booth
+      </NavLink>
+    </div>
+  );
 }
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -20,21 +39,13 @@ export function Layout({ children }: { children: ReactNode }) {
           <Link to="/" className="flex items-center" aria-label="WetExpo — home">
             <img src="/logo.png" alt="WetExpo" width={134} height={36} className="h-9 w-auto" />
           </Link>
-          <nav className="flex items-center gap-1">
-            <NavLink to="/" end className={navClass}>
-              Hall
-            </NavLink>
+          <nav className="flex items-center gap-2">
             {mine && (
               <a href={editPath(mine)} className="rounded-lg px-3 py-2 text-sm font-medium text-amber-200 hover:bg-white/5">
                 My booth
               </a>
             )}
-            <NavLink
-              to="/register"
-              className="rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-fuchsia-500/20 transition hover:brightness-110"
-            >
-              List a booth
-            </NavLink>
+            <NavToggle />
           </nav>
         </div>
       </header>
