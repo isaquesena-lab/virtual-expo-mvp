@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { getManagedBooth, updateBooth } from "../lib/api";
 import type { Booth } from "../lib/types";
 import { CATEGORIES } from "../lib/types";
+import { saveMyBooth } from "../lib/myBooth";
 
 function tokenFromHash(): string {
   const hash = window.location.hash.replace(/^#/, "");
@@ -52,7 +53,11 @@ export function EditBooth() {
     }
     let active = true;
     getManagedBooth(id, token)
-      .then((b) => active && setBooth(b))
+      .then((b) => {
+        if (!active) return;
+        setBooth(b);
+        saveMyBooth({ id, token });
+      })
       .catch((e) => active && setLoadError(e instanceof Error ? e.message : "Could not load booth"))
       .finally(() => active && setLoading(false));
     return () => {
@@ -86,6 +91,24 @@ export function EditBooth() {
     }
     try {
       const updated = await updateBooth(id, token, payload);
+      setBooth(updated);
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onRefreshMeet(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!id) return;
+    setError(null);
+    setSaved(false);
+    setSaving(true);
+    const meet = String(new FormData(e.currentTarget).get("new_meet_url") || "").trim();
+    try {
+      const updated = await updateBooth(id, token, { meet_url: meet });
       setBooth(updated);
       setSaved(true);
     } catch (err) {
@@ -133,6 +156,43 @@ export function EditBooth() {
       {error && (
         <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>
       )}
+
+      <section className="mt-6 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
+        <h2 className="text-sm font-semibold text-amber-100">Meeting link</h2>
+        <p className="mt-1 text-sm text-amber-100/90">
+          Google Meet links from accounts without Google Workspace end after <strong>1 hour</strong>. When yours
+          expires, create a new meeting at{" "}
+          <a href="https://meet.google.com/new" target="_blank" rel="noopener noreferrer" className="underline">
+            meet.google.com/new
+          </a>{" "}
+          and paste it here — visitors get the new link immediately.
+        </p>
+        {booth?.meet_url && (
+          <p className="mt-2 break-all text-xs text-amber-100/70">
+            Current:{" "}
+            <a href={booth.meet_url} target="_blank" rel="noopener noreferrer" className="underline">
+              {booth.meet_url}
+            </a>
+          </p>
+        )}
+        <form onSubmit={onRefreshMeet} className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input
+            key={booth?.meet_url}
+            name="new_meet_url"
+            type="url"
+            required
+            placeholder="https://meet.google.com/xxx-xxxx-xxx"
+            className={INPUT}
+          />
+          <button
+            type="submit"
+            disabled={saving}
+            className="shrink-0 rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:brightness-110 disabled:opacity-60"
+          >
+            {saving ? "Updating…" : "Update link"}
+          </button>
+        </form>
+      </section>
 
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         <input name="company_name" defaultValue={booth?.company_name ?? ""} placeholder="Company name" className={INPUT} />
