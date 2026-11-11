@@ -1,4 +1,4 @@
-import type { Booth } from "./types";
+import type { Booth, MeetingType } from "./types";
 
 async function parse<T>(res: Response): Promise<T> {
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
@@ -55,6 +55,7 @@ export interface CreateBoothPayload {
   country?: string;
   website_url?: string;
   logo_url?: string;
+  meeting_type: MeetingType;
   meet_url: string;
   owner_email: string;
   turnstile_token?: string;

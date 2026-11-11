@@ -18,7 +18,7 @@ const PUBLIC_COLUMNS = `
   CASE WHEN logo_data IS NOT NULL
        THEN '/api/booths/' || id || '/logo?v=' || COALESCE(strftime('%s', logo_updated_at), '0')
        ELSE logo_url END AS logo_url,
-  website_url, meet_url, status,
+  website_url, meeting_type, meet_url, status,
   created_at, updated_at,
   CASE WHEN live_until > CAST(strftime('%s', 'now') AS INTEGER) THEN 1 ELSE 0 END AS is_live
 `;
@@ -153,8 +153,8 @@ app.post("/api/booths", async (c) => {
       `INSERT INTO booths
          (id, slug, company_name, tagline, description, category,
           zone, booth_code, position_x, position_y, city, country,
-          logo_url, website_url, meet_url, owner_email, edit_token_hash, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+          logo_url, website_url, meeting_type, meet_url, owner_email, edit_token_hash, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
     )
       .bind(
         id,
@@ -171,6 +171,7 @@ app.post("/api/booths", async (c) => {
         data.country ?? null,
         data.logo_url ?? null,
         data.website_url ?? null,
+        data.meeting_type,
         data.meet_url,
         data.owner_email,
         editTokenHash,

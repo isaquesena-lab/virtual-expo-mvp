@@ -1,5 +1,5 @@
 const MAX_SIDE = 480;
-const MAX_INPUT_BYTES = 8 * 1024 * 1024;
+const MAX_INPUT_BYTES = 25 * 1024 * 1024;
 
 /**
  * Downscale a user-chosen picture to at most 480px on its longest side and
@@ -7,14 +7,14 @@ const MAX_INPUT_BYTES = 8 * 1024 * 1024;
  * and keeps the upload small. Throws a user-readable Error on bad input.
  */
 export async function prepareLogo(file: File): Promise<Blob> {
-  if (!/^image\/(png|jpe?g|webp)$/i.test(file.type)) throw new Error("Please choose a PNG, JPEG or WebP image.");
-  if (file.size > MAX_INPUT_BYTES) throw new Error("That image is too large (max 8 MB).");
+  if (!/^image\/(png|jpe?g|webp|gif|avif|bmp)$/i.test(file.type)) throw new Error("Please choose a PNG, JPEG, WebP, GIF, AVIF or BMP image.");
+  if (file.size > MAX_INPUT_BYTES) throw new Error("That image is too large (max 25 MB).");
 
   let bmp: ImageBitmap;
   try {
     bmp = await createImageBitmap(file);
   } catch {
-    throw new Error("Could not read that image.");
+    throw new Error("Could not read that image. It may be corrupted or have too many pixels; try a smaller version.");
   }
   const scale = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
   const w = Math.max(1, Math.round(bmp.width * scale));

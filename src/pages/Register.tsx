@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createBooth, getConfig, getTakenStands, uploadLogo, type CreateBoothResult } from "../lib/api";
 import { LogoPicker } from "../components/LogoPicker";
 import { saveMyBooth } from "../lib/myBooth";
-import { CATEGORIES } from "../lib/types";
+import { CATEGORIES, MEETING_TYPE_COPY, type MeetingType } from "../lib/types";
 import { PAVILIONS, pavilionByZone, standsForZone, TIER_LABELS, type Tier } from "../../shared/stands";
 import { Turnstile } from "../components/Turnstile";
 import { CountrySelect } from "../components/CountrySelect";
@@ -27,6 +27,7 @@ export function Register() {
   const [turnstileAttempt, setTurnstileAttempt] = useState(0);
   const [configAttempt, setConfigAttempt] = useState(0);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [meetingType, setMeetingType] = useState<MeetingType>("google_meet");
 
   useEffect(() => {
     let active = true;
@@ -81,6 +82,7 @@ export function Register() {
         country: String(form.get("country") || "") || undefined,
         booth_code: standCode,
         website_url: String(form.get("website_url") || "") || undefined,
+        meeting_type: meetingType,
         meet_url: String(form.get("meet_url") || ""),
         owner_email: String(form.get("owner_email") || ""),
         turnstile_token: turnstileToken ?? undefined,
@@ -129,14 +131,14 @@ export function Register() {
               <li>Use your private link below to check the status and edit anytime.</li>
             </ol>
           </div>
-          <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+          {meetingType === "google_meet" && <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-100">
             <p className="font-medium">⚠ Google Meet links from free accounts end after 1 hour</p>
             <p className="mt-1 text-amber-100/90">
               Without a Google Workspace account, meetings are capped at 60 minutes. When that happens, create a
               new Meet link and paste it into your booth using the link below — your edit link is the only way back,
               so bookmark it.
             </p>
-          </div>
+          </div>}
           <a
             href={result.edit_url}
             className="mt-3 inline-block rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white hover:brightness-110"
@@ -287,13 +289,20 @@ export function Register() {
           </select>
         </label>
 
+        <label className="block">
+          <span className={LABEL}>How visitors join <span className="text-red-400">*</span></span>
+          <select name="meeting_type" value={meetingType} onChange={(e) => setMeetingType(e.target.value as MeetingType)} className={INPUT}>
+            <option value="google_meet">Google Meet</option>
+            <option value="youtube_live">YouTube Live</option>
+          </select>
+        </label>
         <Field
-          label="Meeting URL"
+          label={`${MEETING_TYPE_COPY[meetingType].label} URL`}
           name="meet_url"
           required
           type="url"
-          placeholder="https://meet.google.com/xxx-xxxx-xxx"
-          hint="Must be a Google Meet link (https://meet.google.com/…). Opens in a new tab when visitors join."
+          placeholder={MEETING_TYPE_COPY[meetingType].placeholder}
+          hint={MEETING_TYPE_COPY[meetingType].hint}
         />
         <Field label="Website" name="website_url" type="url" placeholder="https://yourcompany.com" />
         <div>
