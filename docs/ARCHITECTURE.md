@@ -10,11 +10,11 @@ flowchart TD
   Visitor --> API[Cloudflare Worker: REST API]
   API --> D1[(Cloudflare D1)]
   API --> Turnstile[Turnstile verification]
-  Visitor --> Meet[External Google Meet room]
+  Visitor --> Meet[External Meet or YouTube Live session]
   Moderator[Moderator] --> API
 ```
 
-Google Meet is an outbound link, not a backend dependency. The system does not relay audio or video.
+Google Meet and YouTube Live are outbound links, not backend dependencies. The system does not relay audio or video.
 
 ## Stack
 
