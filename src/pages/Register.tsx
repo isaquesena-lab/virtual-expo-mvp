@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createBooth, getTakenStands, type CreateBoothResult } from "../lib/api";
 import { CATEGORIES } from "../lib/types";
-import { PAVILIONS, standsForZone } from "../../shared/stands";
+import { PAVILIONS, pavilionByZone, standsForZone, TIER_LABELS, type Tier } from "../../shared/stands";
 
 const INPUT =
   "mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30";
@@ -13,6 +13,7 @@ export function Register() {
   const [result, setResult] = useState<CreateBoothResult | null>(null);
 
   const [zone, setZone] = useState<string>(PAVILIONS[0].zone);
+  const [tier, setTier] = useState<Tier | "">("");
   const [standCode, setStandCode] = useState<string>("");
   const [taken, setTaken] = useState<Set<string>>(new Set());
 
@@ -27,7 +28,11 @@ export function Register() {
     refreshTaken();
   }, []);
 
-  const zoneStands = useMemo(() => standsForZone(zone), [zone]);
+  const pavilion = useMemo(() => pavilionByZone(zone), [zone]);
+  const zoneStands = useMemo(
+    () => standsForZone(zone).filter((s) => !tier || s.tier === tier),
+    [zone, tier],
+  );
   const availableInZone = zoneStands.filter((s) => !taken.has(s.code)).length;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -126,11 +131,32 @@ export function Register() {
             </select>
           </label>
 
+          {pavilion && pavilion.tiers.length > 1 && (
+            <label className="mt-3 block">
+              <span className={LABEL}>Tier</span>
+              <select
+                value={tier}
+                onChange={(e) => {
+                  setTier(e.target.value as Tier | "");
+                  setStandCode("");
+                }}
+                className={INPUT}
+              >
+                <option value="">All tiers</option>
+                {pavilion.tiers.map((t) => (
+                  <option key={t.tier} value={t.tier}>
+                    {TIER_LABELS[t.tier]} ({t.count} stands)
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           <div className="mt-3 flex items-center justify-between">
             <span className={LABEL}>Stand</span>
             <span className="text-xs text-slate-400">{availableInZone} available</span>
           </div>
-          <div className="mt-2 grid grid-cols-6 gap-1.5 sm:grid-cols-8">
+          <div className="mt-2 grid max-h-56 grid-cols-5 gap-1 overflow-y-auto rounded-lg border border-white/5 bg-black/20 p-2 sm:grid-cols-8">
             {zoneStands.map((s) => {
               const isTaken = taken.has(s.code);
               const isSelected = standCode === s.code;
