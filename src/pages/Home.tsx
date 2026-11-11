@@ -4,6 +4,7 @@ import { listBooths } from "../lib/api";
 import type { Booth } from "../lib/types";
 import { CATEGORIES, ZONES } from "../lib/types";
 import { STAND_BY_CODE, TIER_LABELS, type Tier } from "../../shared/stands";
+import { Select } from "../components/Select";
 import { BoothCard } from "../components/BoothCard";
 import { HallMap } from "../components/HallMap";
 
@@ -46,9 +47,6 @@ export function Home() {
     setTier("");
     setDraft({ category: "", zone: "", tier: "" });
   }
-  const selectClass =
-    "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-100 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30";
-
   return (
     <div className="space-y-8">
       <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-indigo-600/30 via-fuchsia-600/20 to-transparent p-6 sm:p-10">
@@ -149,30 +147,24 @@ export function Home() {
               }}
               className="space-y-3"
             >
-              <select value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} aria-label="Category" className={selectClass}>
-                <option value="">Category</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <select value={draft.zone} onChange={(e) => setDraft({ ...draft, zone: e.target.value })} aria-label="Pavilion" className={selectClass}>
-                <option value="">Pavilion</option>
-                {ZONES.map((z) => (
-                  <option key={z} value={z}>
-                    {z}
-                  </option>
-                ))}
-              </select>
-              <select value={draft.tier} onChange={(e) => setDraft({ ...draft, tier: e.target.value })} aria-label="Tier" className={selectClass}>
-                <option value="">Tier</option>
-                {(Object.keys(TIER_LABELS) as Tier[]).map((t) => (
-                  <option key={t} value={t}>
-                    {TIER_LABELS[t]}
-                  </option>
-                ))}
-              </select>
+              <Select
+                value={draft.category}
+                onChange={(v) => setDraft({ ...draft, category: v })}
+                placeholder="Category"
+                options={CATEGORIES.map((c) => ({ value: c, label: c }))}
+              />
+              <Select
+                value={draft.zone}
+                onChange={(v) => setDraft({ ...draft, zone: v })}
+                placeholder="Pavilion"
+                options={ZONES.map((z) => ({ value: z, label: z }))}
+              />
+              <Select
+                value={draft.tier}
+                onChange={(v) => setDraft({ ...draft, tier: v })}
+                placeholder="Tier"
+                options={(Object.keys(TIER_LABELS) as Tier[]).map((t) => ({ value: t, label: TIER_LABELS[t] }))}
+              />
               <button
                 type="submit"
                 className="w-full rounded-full border border-indigo-300/40 px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500 hover:to-fuchsia-500"
