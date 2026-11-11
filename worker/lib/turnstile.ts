@@ -20,9 +20,18 @@ export async function verifyTurnstile(
       method: "POST",
       body,
     });
-    const data = (await res.json()) as { success: boolean };
+    const data = (await res.json()) as { success: boolean; "error-codes"?: string[] };
+    if (data.success !== true) {
+      // error-codes are safe to log (not secret). `invalid-input-secret` means
+      // TURNSTILE_SECRET does not match the site key; `invalid-input-response`
+      // / `timeout-or-duplicate` point at the client token instead.
+      console.warn("Turnstile siteverify rejected token", {
+        errorCodes: data["error-codes"] ?? [],
+      });
+    }
     return data.success === true;
-  } catch {
+  } catch (err) {
+    console.warn("Turnstile siteverify request failed", { error: String(err) });
     return false;
   }
 }

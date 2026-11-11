@@ -18,14 +18,22 @@ export function Register() {
   const [tier, setTier] = useState<Tier | "">("");
   const [standCode, setStandCode] = useState<string>("");
   const [taken, setTaken] = useState<Set<string>>(new Set());
-  const [siteKey, setSiteKey] = useState<string | null>(null);
+  const [siteKey, setSiteKey] = useState<string | null | undefined>(undefined);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileAttempt, setTurnstileAttempt] = useState(0);
+  const [configAttempt, setConfigAttempt] = useState(0);
+  const [configError, setConfigError] = useState<string | null>(null);
 
   useEffect(() => {
-    getConfig()
-      .then((c) => setSiteKey(c.turnstile_site_key))
-      .catch(() => setSiteKey(null));
-  }, []);
+    let active = true;
+    setConfigError(null);
+    getConfig().then((config) => {
+      if (active) setSiteKey(config.turnstile_site_key);
+    }).catch(() => {
+      if (active) setConfigError("Could not load anti-bot configuration. Please retry.");
+    });
+    return () => { active = false; };
+  }, [configAttempt]);
 
   async function refreshTaken() {
     try {
@@ -47,13 +55,14 @@ export function Register() {
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (submitting) return;
     setError(null);
-    if (!standCode) {
-      setError("Please pick an available stand.");
+    if (siteKey === undefined || (siteKey && !turnstileToken)) {
+      setError("Please complete anti-bot verification before submitting.");
       return;
     }
-    if (siteKey && !turnstileToken) {
-      setError("Please complete the anti-bot check below.");
+    if (!standCode) {
+      setError("Please pick an available stand.");
       return;
     }
     setSubmitting(true);
@@ -78,6 +87,9 @@ export function Register() {
       await refreshTaken();
       setStandCode("");
     } finally {
+      // Turnstile tokens are single-use, including after failed submissions.
+      setTurnstileToken(null);
+      setTurnstileAttempt((attempt) => attempt + 1);
       setSubmitting(false);
     }
   }
@@ -269,16 +281,32 @@ export function Register() {
           hint="Used only to verify ownership and contact you — never for marketing."
         />
 
+        {siteKey === undefined && (
+          <div className="space-y-2 text-sm text-slate-400">
+            <p role={configError ? "alert" : "status"}>
+              {configError ?? "Loading anti-bot configuration…"}
+            </p>
+            {configError && (
+              <button
+                type="button"
+                className="text-indigo-300 underline"
+                onClick={() => setConfigAttempt((attempt) => attempt + 1)}
+              >
+                Retry configuration
+              </button>
+            )}
+          </div>
+        )}
         {siteKey && (
           <div>
             <span className={LABEL}>Anti-bot check</span>
-            <Turnstile siteKey={siteKey} onToken={setTurnstileToken} />
+            <Turnstile key={turnstileAttempt} siteKey={siteKey} onToken={setTurnstileToken} />
           </div>
         )}
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || siteKey === undefined || Boolean(siteKey && !turnstileToken)}
           className="w-full rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-4 py-3 font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
         >
           {submitting ? "Submitting…" : "Submit for review"}

@@ -59,9 +59,14 @@ app.get("/api/booths", async (c) => {
 });
 
 // Public client config (no secrets). The Turnstile site key is public by design.
-app.get("/api/config", (c) =>
-  json({ turnstile_site_key: c.env.TURNSTILE_SITE_KEY || null }),
-);
+app.get("/api/config", (c) => {
+  if (c.env.TURNSTILE_SECRET && !c.env.TURNSTILE_SITE_KEY) {
+    return json({ error: "Anti-bot verification is not configured correctly" }, 503);
+  }
+  return json({
+    turnstile_site_key: c.env.TURNSTILE_SECRET ? c.env.TURNSTILE_SITE_KEY : null,
+  });
+});
 
 // Which stand slots are already taken (held by a non-rejected booth).
 // Returns codes only — no company or contact data.
