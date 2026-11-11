@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { deleteLogo, fetchOwnerLogo, getManagedBooth, updateBooth, uploadLogo } from "../lib/api";
+import {
+  deleteLogo,
+  fetchOwnerLogo,
+  getManagedBooth,
+  goOffline,
+  sendLiveHeartbeat,
+  updateBooth,
+  uploadLogo,
+} from "../lib/api";
 import { LogoPicker } from "../components/LogoPicker";
 import type { Booth } from "../lib/types";
 import { CATEGORIES } from "../lib/types";
@@ -37,6 +45,18 @@ const STATUS_COPY: Record<string, { label: string; className: string; note: stri
 const INPUT =
   "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30";
 
+/** A form row with a persistent visible label (placeholders vanish once a field is filled). */
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-sm font-medium text-slate-200">{label}</span>
+      {hint && <span className="mb-1.5 block text-xs text-slate-500">{hint}</span>}
+      {!hint && <span className="mb-1.5 block" />}
+      {children}
+    </label>
+  );
+}
+
 export function EditBooth() {
   const { id } = useParams<{ id: string }>();
   const [token] = useState(tokenFromHash);
@@ -48,6 +68,34 @@ export function EditBooth() {
   const [saved, setSaved] = useState(false);
   const [logoBlob, setLogoBlob] = useState<Blob | null>(null);
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [live, setLive] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  // While "live" is on, ping every 30s (server TTL is 90s). Closing the tab or
+  // losing the connection simply lets the presence expire.
+  useEffect(() => {
+    if (!live || !id || !token) return;
+    let stopped = false;
+    const ping = () =>
+      sendLiveHeartbeat(id, token)
+        .then(() => !stopped && setLiveError(null))
+        .catch((e) => {
+          if (stopped) return;
+          setLiveError(e instanceof Error ? e.message : "Presence update failed");
+          setLive(false);
+        });
+    void ping();
+    const timer = setInterval(ping, 30_000);
+    const onHide = () => void goOffline(id, token).catch(() => {});
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      window.removeEventListener("pagehide", onHide);
+      void goOffline(id, token).catch(() => {});
+    };
+  }, [live, id, token]);
 
   useEffect(() => {
     if (!id || !token) {
@@ -122,6 +170,7 @@ export function EditBooth() {
       }
       setBooth(updated);
       setSaved(true);
+      setDirty(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed");
     } finally {
@@ -186,6 +235,33 @@ export function EditBooth() {
         <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>
       )}
 
+      {booth?.status === "approved" && (
+        <section className="mt-6 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-emerald-100">Live presence</h2>
+              <p className="mt-1 text-sm text-emerald-100/90">
+                Turn this on when you are in your meeting room. Your booth shows a <strong>Live now</strong> badge
+                and appears in the &ldquo;Live now only&rdquo; filter. Keep this page open: it checks in every 30
+                seconds, and you go offline automatically a minute or so after closing it.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={live}
+              onClick={() => setLive((v) => !v)}
+              className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition ${live ? "bg-emerald-400" : "bg-white/20"}`}
+            >
+              <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition ${live ? "translate-x-5" : ""}`} />
+              <span className="sr-only">Live presence</span>
+            </button>
+          </div>
+          {live && <p className="mt-2 text-xs font-medium text-emerald-200">You are live.</p>}
+          {liveError && <p className="mt-2 text-xs text-red-300">{liveError}</p>}
+        </section>
+      )}
+
       <section className="mt-6 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
         <h2 className="text-sm font-semibold text-amber-100">Meeting link</h2>
         <p className="mt-1 text-sm text-amber-100/90">
@@ -223,22 +299,56 @@ export function EditBooth() {
         </form>
       </section>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
-        <input name="company_name" defaultValue={booth?.company_name ?? ""} placeholder="Company name" className={INPUT} />
-        <input name="tagline" defaultValue={booth?.tagline ?? ""} placeholder="Tagline" className={INPUT} />
-        <textarea name="description" defaultValue={booth?.description ?? ""} rows={4} placeholder="Description" className={INPUT} />
-        <select name="category" defaultValue={booth?.category ?? ""} className={INPUT}>
-          <option value="">Keep current category</option>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        <input name="meet_url" type="url" defaultValue={booth?.meet_url ?? ""} placeholder="Meeting URL (https://meet.google.com/…)" className={INPUT} />
-        <input name="website_url" type="url" defaultValue={booth?.website_url ?? ""} placeholder="Website (https://…)" className={INPUT} />
+      <form
+        onSubmit={onSubmit}
+        onChange={() => setDirty(true)}
+        className="mt-6 space-y-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-4">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-indigo-300">Editing booth</p>
+            <p className="truncate text-lg font-semibold text-white">{booth?.company_name}</p>
+            {booth?.booth_code && (
+              <p className="text-xs text-slate-400">
+                {booth.zone ? `${booth.zone} · ` : ""}Stand {booth.booth_code}
+              </p>
+            )}
+          </div>
+          {dirty && (
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
+              Unsaved changes
+            </span>
+          )}
+        </div>
+
+        <Field label="Company name" hint="Shown as the title on your card and page.">
+          <input name="company_name" defaultValue={booth?.company_name ?? ""} className={INPUT} />
+        </Field>
+        <Field label="Tagline" hint="One short line under the company name (optional).">
+          <input name="tagline" defaultValue={booth?.tagline ?? ""} placeholder="e.g. Climate control, simplified" className={INPUT} />
+        </Field>
+        <Field label="Description" hint="What visitors will read on your booth page.">
+          <textarea name="description" defaultValue={booth?.description ?? ""} rows={4} className={INPUT} />
+        </Field>
+        <Field label="Category" hint="Used by the directory filters.">
+          <select name="category" defaultValue={booth?.category ?? ""} className={INPUT}>
+            <option value="">Keep current category</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Meeting link" hint="Where the Join meeting button sends visitors.">
+          <input name="meet_url" type="url" defaultValue={booth?.meet_url ?? ""} placeholder="https://meet.google.com/…" className={INPUT} />
+        </Field>
+        <Field label="Website" hint="Optional link to your company site.">
+          <input name="website_url" type="url" defaultValue={booth?.website_url ?? ""} placeholder="https://…" className={INPUT} />
+        </Field>
         <div>
-          <p className="mb-2 text-sm font-medium text-slate-200">Company logo / photo</p>
+          <p className="text-sm font-medium text-slate-200">Company logo / photo</p>
+          <p className="mb-1.5 text-xs text-slate-500">Shown on your card and booth page.</p>
           <LogoPicker
             key={booth?.logo_url ?? "none"}
             currentUrl={logoSrc}

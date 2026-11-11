@@ -10,6 +10,7 @@
 
 ## How was it tested?
 
+- [ ] `pnpm test` passes
 - [ ] `pnpm typecheck` passes
 - [ ] `pnpm build` passes
 - [ ] Tested locally with `pnpm dev`
