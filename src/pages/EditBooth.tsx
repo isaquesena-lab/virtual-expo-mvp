@@ -5,6 +5,7 @@ import {
   fetchOwnerLogo,
   getManagedBooth,
   goOffline,
+  renewBoothWithToken,
   sendLiveHeartbeat,
   updateBooth,
   uploadLogo,
@@ -21,6 +22,11 @@ function tokenFromHash(): string {
 }
 
 const STATUS_COPY: Record<string, { label: string; className: string; note: string }> = {
+  expired: {
+    label: "Expired",
+    className: "border-red-400/30 bg-red-500/10 text-red-200",
+    note: "This stand's listing window ended and its slot was released. Contact the moderators to relist your booth.",
+  },
   pending: {
     label: "Pending review",
     className: "border-amber-400/30 bg-amber-500/10 text-amber-200",
@@ -226,6 +232,32 @@ export function EditBooth() {
               View your public booth page →
             </Link>
           )}
+        </div>
+      )}
+
+      {booth?.status === "approved" && typeof booth.expires_at === "number" && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <p className={`text-sm ${booth.expires_at - Date.now() / 1000 < 7 * 86400 ? "text-amber-300" : "text-slate-300"}`}>
+            Public listing ends{" "}
+            <span className="font-semibold">{new Date(booth.expires_at * 1000).toLocaleDateString()}</span>
+            {" — renew to keep your stand."}
+          </p>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!id) return;
+              setError(null);
+              try {
+                setBooth(await renewBoothWithToken(id, token));
+                setSaved(true);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Could not renew");
+              }
+            }}
+            className="rounded-full border border-indigo-300/40 px-4 py-2 text-sm font-semibold text-indigo-200 hover:bg-white/5"
+          >
+            Renew 30 days
+          </button>
         </div>
       )}
 

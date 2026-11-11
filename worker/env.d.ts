@@ -9,4 +9,6 @@ export interface Env {
   TURNSTILE_SITE_KEY?: string;
   /** Per-IP rate limiter for public booth submissions. */
   SUBMIT_LIMITER: RateLimit;
+  /** "Name <no-reply@domain>" used for magic-link emails (MailChannels). Requires SPF on the domain. */
+  MAIL_FROM?: string;
 }

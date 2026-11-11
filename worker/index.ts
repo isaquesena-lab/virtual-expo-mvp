@@ -10,6 +10,18 @@ import { uniqueSlug } from "./lib/slug";
 import { verifyTurnstile } from "./lib/turnstile";
 import { STAND_BY_CODE } from "../shared/stands";
 import { MAX_LOGO_BYTES, fromBase64, sniffImage, toBase64 } from "./lib/image";
+import { expiryFromNow, reapExpired, renewedExpiry } from "./lib/lifecycle";
+import { sendMail } from "./lib/mail";
+import {
+  SESSION_COOKIE,
+  SESSION_DAYS,
+  clearSessionCookie,
+  consumeLoginCode,
+  createLoginCode,
+  createSession,
+  resolveSession,
+  sessionCookie,
+} from "./lib/auth";
 
 /** Columns safe to expose on public endpoints (never owner_email / edit_token_hash). */
 const PUBLIC_COLUMNS = `
@@ -19,7 +31,7 @@ const PUBLIC_COLUMNS = `
        THEN '/api/booths/' || id || '/logo?v=' || COALESCE(strftime('%s', logo_updated_at), '0')
        ELSE logo_url END AS logo_url,
   website_url, meeting_type, meet_url, status,
-  created_at, updated_at,
+  created_at, updated_at, approved_at, expires_at,
   CASE WHEN live_until > CAST(strftime('%s', 'now') AS INTEGER) THEN 1 ELSE 0 END AS is_live
 `;
 
@@ -46,6 +58,7 @@ app.get("/api/booths", async (c) => {
   const category = c.req.query("category")?.trim();
   const zone = c.req.query("zone")?.trim();
   const liveOnly = c.req.query("live") === "1";
+  await reapExpired(c.env.DB);
 
   const where: string[] = ["status = 'approved'"];
   const binds: unknown[] = [];
@@ -81,11 +94,137 @@ app.get("/api/config", (c) => {
   });
 });
 
-// Which stand slots are already taken (held by a non-rejected booth).
+/* ------------------------- Owner accounts (login) ------------------------- */
+
+// Request a magic login link/code for the owner email of one or more booths.
+// Same response whether or not the email exists (no account enumeration).
+app.post("/api/auth/login", async (c) => {
+  const ip = c.req.header("cf-connecting-ip") ?? null;
+  const { success: underLimit } = await c.env.SUBMIT_LIMITER.limit({ key: `login:${ip ?? "anon"}` });
+  if (!underLimit) {
+    return json({ error: "Too many sign-in requests. Please wait a minute." }, 429);
+  }
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+  const email = String((body as Record<string, unknown>)?.email ?? "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return json({ error: "Enter a valid email address" }, 422);
+  }
+
+  const account = await c.env.DB.prepare("SELECT id FROM accounts WHERE email = ?1")
+    .bind(email)
+    .first<{ id: string }>();
+  if (account) {
+    const code = await createLoginCode(c.env.DB, account.id);
+    const url = new URL(c.req.url);
+    const link = `${url.origin}/login#code=${code}`;
+    await sendMail(c.env.MAIL_FROM, {
+      to: email,
+      subject: "Your WetExpo sign-in link",
+      text: `Use this link to manage your WetExpo stands (valid 15 minutes):\n${link}\n\nIf you did not request it, ignore this email.`,
+    });
+  }
+  // Always the same answer so the endpoint cannot reveal which emails exist.
+  return json({ message: "If that email manages a booth, a sign-in link is on its way." });
+});
+
+// Exchange a magic code for a session cookie.
+app.post("/api/auth/session", async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+  const code = String((body as Record<string, unknown>)?.code ?? "").trim();
+  if (!code) return json({ error: "Missing code" }, 422);
+
+  const accountId = await consumeLoginCode(c.env.DB, code);
+  if (!accountId) return json({ error: "That sign-in link is invalid or has expired" }, 401);
+
+  // First login claims every booth whose owner_email matches the account.
+  await c.env.DB.prepare(
+    "UPDATE booths SET account_id = ?1 WHERE owner_email = (SELECT email FROM accounts WHERE id = ?1) AND account_id IS NULL",
+  )
+    .bind(accountId)
+    .run();
+
+  const token = await createSession(c.env.DB, accountId);
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      "Set-Cookie": sessionCookie(token, SESSION_DAYS * 86400),
+    },
+  });
+});
+
+// Who am I + which booths does this session manage.
+app.get("/api/auth/me", async (c) => {
+  const session = await resolveSession(c.env.DB, c.req.header("cookie"));
+  if (!session) return json({ error: "Not signed in" }, 401);
+  await reapExpired(c.env.DB);
+  const { results } = await c.env.DB.prepare(
+    `SELECT ${PUBLIC_COLUMNS} FROM booths WHERE account_id = ?1 ORDER BY company_name COLLATE NOCASE ASC`,
+  )
+    .bind(session.accountId)
+    .all();
+  return json({ email: session.email, booths: results });
+});
+
+app.post("/api/auth/logout", async (c) => {
+  const session = await resolveSession(c.env.DB, c.req.header("cookie"));
+  if (session) {
+    await c.env.DB.prepare("DELETE FROM sessions WHERE account_id = ?1").bind(session.accountId).run();
+  }
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Set-Cookie": clearSessionCookie },
+  });
+});
+
+// Owner renew: extend an approved booth's expiry (session or edit token).
+app.post("/api/booths/:id/renew", async (c) => {
+  const id = c.req.param("id");
+  const session = await resolveSession(c.env.DB, c.req.header("cookie"));
+  let row = await c.env.DB.prepare(
+    "SELECT id, account_id, status, expires_at, edit_token_hash FROM booths WHERE id = ?1",
+  )
+    .bind(id)
+    .first<{ id: string; account_id: string | null; status: string; expires_at: number | null; edit_token_hash: string }>();
+  if (!row) return json({ error: "Booth not found" }, 404);
+
+  const ownsBySession = !!session && row.account_id === session.accountId;
+  if (!ownsBySession) {
+    const token = c.req.header("x-edit-token") ?? "";
+    if (!token) return json({ error: "Sign in or provide your edit token" }, 401);
+    if (!timingSafeEqual(await hashEditToken(token), row.edit_token_hash)) {
+      return json({ error: "Invalid edit token" }, 403);
+    }
+  }
+  if (row.status !== "approved") {
+    return json({ error: "Only approved booths can be renewed" }, 409);
+  }
+
+  const expiresAt = renewedExpiry(row.expires_at);
+  await c.env.DB.prepare("UPDATE booths SET expires_at = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2")
+    .bind(expiresAt, id)
+    .run();
+  row = await c.env.DB.prepare(`SELECT ${PUBLIC_COLUMNS} FROM booths WHERE id = ?1`).bind(id).first();
+  return json({ booth: row });
+});
+
+// Which stand slots are already taken (held by a non-rejected, non-expired booth).
 // Returns codes only — no company or contact data.
 app.get("/api/stands", async (c) => {
+  await reapExpired(c.env.DB);
   const { results } = await c.env.DB.prepare(
-    "SELECT booth_code FROM booths WHERE booth_code IS NOT NULL AND status <> 'rejected'",
+    "SELECT booth_code FROM booths WHERE booth_code IS NOT NULL AND status NOT IN ('rejected', 'expired')",
   ).all<{ booth_code: string }>();
   const taken = results.map((r) => r.booth_code);
   return json({ taken });
@@ -93,6 +232,7 @@ app.get("/api/stands", async (c) => {
 
 // Single approved booth by slug.
 app.get("/api/booths/:slug", async (c) => {
+  await reapExpired(c.env.DB);
   const slug = c.req.param("slug");
   const booth = await c.env.DB.prepare(
     `SELECT ${PUBLIC_COLUMNS} FROM booths WHERE slug = ? AND status = 'approved'`,
@@ -133,9 +273,9 @@ app.post("/api/booths", async (c) => {
   const stand = STAND_BY_CODE.get(data.booth_code);
   if (!stand) return json({ error: "Unknown stand slot" }, 422);
 
-  // Reject early if the slot is already held by a non-rejected booth.
+  // Reject early if the slot is already held by a non-rejected, non-expired booth.
   const taken = await c.env.DB.prepare(
-    "SELECT 1 FROM booths WHERE booth_code = ? AND status <> 'rejected' LIMIT 1",
+    "SELECT 1 FROM booths WHERE booth_code = ? AND status NOT IN ('rejected', 'expired') LIMIT 1",
   )
     .bind(stand.code)
     .first();
@@ -200,6 +340,7 @@ app.post("/api/booths", async (c) => {
 
 // Owner view of their own booth (any status) using the capability token.
 app.get("/api/booths/:id/manage", async (c) => {
+  await reapExpired(c.env.DB);
   const id = c.req.param("id");
   const token = c.req.header("x-edit-token") ?? "";
   if (!token) return json({ error: "Missing edit token" }, 401);
@@ -410,6 +551,7 @@ admin.use("*", async (c, next) => {
 
 // Review queue — includes owner_email for verification. Filter by ?status=.
 admin.get("/booths", async (c) => {
+  await reapExpired(c.env.DB);
   const status = c.req.query("status")?.trim();
   const sql = status
     ? `SELECT ${PUBLIC_COLUMNS}, owner_email FROM booths WHERE status = ? ORDER BY created_at DESC`
@@ -440,6 +582,12 @@ admin.patch("/booths/:id", async (c) => {
   if (data.status !== undefined) {
     binds.push(data.status);
     sets.push(`status = ?${binds.length}`);
+    if (data.status === "approved") {
+      // Approving (re)starts the renewal window.
+      sets.push("approved_at = CURRENT_TIMESTAMP");
+      binds.push(expiryFromNow());
+      sets.push(`expires_at = ?${binds.length}`);
+    }
   }
 
   if (data.booth_code !== undefined) {

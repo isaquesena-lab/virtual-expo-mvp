@@ -137,6 +137,49 @@ export async function fetchOwnerLogo(url: string, token: string): Promise<string
   return URL.createObjectURL(await res.blob());
 }
 
+/* ------------------------------ Owner accounts ---------------------------- */
+
+export async function requestLogin(email: string): Promise<{ message: string }> {
+  const res = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  return parse<{ message: string }>(res);
+}
+
+export async function startSession(code: string): Promise<{ ok: boolean }> {
+  const res = await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+  return parse<{ ok: boolean }>(res);
+}
+
+export async function getMyAccount(): Promise<{ email: string; booths: Booth[] }> {
+  return parse<{ email: string; booths: Booth[] }>(await fetch("/api/auth/me"));
+}
+
+export async function logout(): Promise<{ ok: boolean }> {
+  return parse<{ ok: boolean }>(await fetch("/api/auth/logout", { method: "POST" }));
+}
+
+export async function renewBooth(id: string): Promise<Booth> {
+  const res = await fetch(`/api/booths/${encodeURIComponent(id)}/renew`, { method: "POST" });
+  const data = await parse<{ booth: Booth }>(res);
+  return data.booth;
+}
+
+export async function renewBoothWithToken(id: string, token: string): Promise<Booth> {
+  const res = await fetch(`/api/booths/${encodeURIComponent(id)}/renew`, {
+    method: "POST",
+    headers: { "x-edit-token": token },
+  });
+  const data = await parse<{ booth: Booth }>(res);
+  return data.booth;
+}
+
 /* ------------------------------- Moderator -------------------------------- */
 
 export async function adminListBooths(token: string, status?: string): Promise<Booth[]> {

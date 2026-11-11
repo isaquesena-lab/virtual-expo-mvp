@@ -2,7 +2,7 @@ import { useState } from "react";
 import { adminListBooths, adminUpdateBooth } from "../lib/api";
 import type { Booth } from "../lib/types";
 
-const STATUS_FILTERS = ["pending", "approved", "rejected", "hidden", ""] as const;
+const STATUS_FILTERS = ["pending", "approved", "rejected", "hidden", "expired", ""] as const;
 
 export function Admin() {
   const [token, setToken] = useState(() => sessionStorage.getItem("admin_token") ?? "");

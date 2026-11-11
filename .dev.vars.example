@@ -5,6 +5,10 @@
 # Without it, the moderator area returns 503. Pick any strong random string.
 ADMIN_TOKEN="dev-moderator-token-change-me"
 
+# Optional: sender for magic-link emails (MailChannels). Requires an SPF record
+# on the domain: v=spf1 include:relay.mailchannels.net -all
+# MAIL_FROM="WetExpo <no-reply@wetexpo.com>"
+
 # Optional: configure a matching Turnstile test key pair to exercise the widget locally.
 # Leave the secret unset to skip verification and hide the widget in local dev.
 # TURNSTILE_SITE_KEY="your-public-test-site-key"
