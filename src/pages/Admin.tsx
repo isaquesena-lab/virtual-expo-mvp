@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { adminListBooths, adminUpdateBooth } from "../lib/api";
+import { adminIssueEditLink, adminListBooths, adminUpdateBooth } from "../lib/api";
 import type { Booth } from "../lib/types";
 
 const STATUS_FILTERS = ["pending", "approved", "rejected", "hidden", ""] as const;
@@ -11,6 +11,9 @@ export function Admin() {
   const [booths, setBooths] = useState<Booth[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // New edit links, shown once per booth until dismissed.
+  const [links, setLinks] = useState<Record<string, string>>({});
+  const [copied, setCopied] = useState<string | null>(null);
 
   async function load(status: string, tk = token) {
     setError(null);
@@ -34,6 +37,30 @@ export function Admin() {
       await load(filter);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Action failed");
+    }
+  }
+
+  async function issueLink(b: Booth) {
+    const ok = confirm(
+      `Create a NEW edit link for "${b.company_name}"?\n\nThe current link stops working immediately. ` +
+        `Send the new one only to ${b.owner_email ?? "the registered e-mail"}, after confirming they control that address.`,
+    );
+    if (!ok) return;
+    try {
+      const { edit_url } = await adminIssueEditLink(token, b.id);
+      setLinks((prev) => ({ ...prev, [b.id]: edit_url }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create the link");
+    }
+  }
+
+  async function copyLink(id: string, url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(id);
+      setTimeout(() => setCopied((c) => (c === id ? null : c)), 2000);
+    } catch {
+      /* clipboard unavailable: the field below is selectable */
     }
   }
 
@@ -107,6 +134,7 @@ export function Admin() {
                   {b.zone ? ` · ${b.zone}` : ""}
                   {b.booth_code ? ` · ${b.booth_code}` : ""} · <span className="font-mono text-slate-300">{b.status}</span>
                 </p>
+                {b.owner_email && <p className="mt-1 text-xs text-slate-500">Owner: <span className="text-slate-300">{b.owner_email}</span></p>}
               </div>
               <a
                 href={b.meet_url}
@@ -150,7 +178,45 @@ export function Admin() {
               >
                 Place on map
               </button>
+              <button
+                onClick={() => issueLink(b)}
+                className="rounded-lg border border-amber-400/30 px-3 py-1.5 text-sm font-medium text-amber-200 hover:bg-amber-500/10"
+              >
+                New edit link
+              </button>
             </div>
+            {links[b.id] && (
+              <div className="msg-in mt-3 rounded-lg border border-amber-400/30 bg-amber-500/10 p-3">
+                <p className="text-xs font-semibold text-amber-100">
+                  New edit link. Shown once: copy it now and send it only to {b.owner_email ?? "the owner"}.
+                </p>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    readOnly
+                    value={links[b.id]}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-xs text-slate-100"
+                  />
+                  <button
+                    onClick={() => copyLink(b.id, links[b.id])}
+                    className="shrink-0 rounded-lg bg-amber-400 px-3 py-2 text-sm font-semibold text-slate-900 hover:brightness-110"
+                  >
+                    {copied === b.id ? "Copied" : "Copy"}
+                  </button>
+                  <button
+                    onClick={() =>
+                      setLinks((prev) => {
+                        const { [b.id]: _drop, ...rest } = prev;
+                        return rest;
+                      })
+                    }
+                    className="shrink-0 rounded-lg border border-white/15 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
