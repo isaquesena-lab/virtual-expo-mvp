@@ -84,7 +84,7 @@ export function LogoPicker({ currentUrl, onChange, onRemoveCurrent, disabled }: 
               </button>
             )}
           </div>
-          <p className="text-xs text-slate-500">PNG, JPEG, WebP, GIF, AVIF or BMP, up to 80 MB. Square images work best; it is resized automatically.</p>
+          <p className="text-xs text-slate-500">PNG, JPEG, WebP, GIF, AVIF or BMP, up to 25 MB. Square images work best; resized automatically.</p>
         </div>
       </div>
       {error && <p className="mt-2 text-sm text-red-300" role="alert">{error}</p>}
