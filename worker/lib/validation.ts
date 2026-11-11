@@ -31,6 +31,9 @@ export const createBoothSchema = z.object({
   tagline: z.string().trim().max(160).optional().transform((v) => v || undefined),
   description: z.string().trim().min(20).max(2000),
   category: z.enum(CATEGORIES),
+  // Chosen stand slot. The server resolves zone + map position from this code;
+  // the client never sends coordinates directly.
+  booth_code: z.string().trim().min(1).max(40),
   website_url: optionalHttpsUrl,
   logo_url: optionalHttpsUrl,
   meet_url: httpsUrl,

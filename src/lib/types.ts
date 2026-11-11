@@ -29,4 +29,4 @@ export const CATEGORIES = [
   "Other",
 ] as const;
 
-export const ZONES = ["North Hall", "South Hall", "Startup Alley"] as const;
+export { ZONES } from "../../shared/stands";

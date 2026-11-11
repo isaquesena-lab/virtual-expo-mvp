@@ -1,15 +1,39 @@
-import { useState } from "react";
-import { createBooth, type CreateBoothResult } from "../lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { createBooth, getTakenStands, type CreateBoothResult } from "../lib/api";
 import { CATEGORIES } from "../lib/types";
+import { PAVILIONS, standsForZone } from "../../shared/stands";
 
 export function Register() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateBoothResult | null>(null);
 
+  const [zone, setZone] = useState<string>(PAVILIONS[0].zone);
+  const [standCode, setStandCode] = useState<string>("");
+  const [taken, setTaken] = useState<Set<string>>(new Set());
+
+  async function refreshTaken() {
+    try {
+      const list = await getTakenStands();
+      setTaken(new Set(list));
+    } catch {
+      /* non-fatal: picker still works, server re-checks on submit */
+    }
+  }
+  useEffect(() => {
+    refreshTaken();
+  }, []);
+
+  const zoneStands = useMemo(() => standsForZone(zone), [zone]);
+  const availableInZone = zoneStands.filter((s) => !taken.has(s.code)).length;
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    if (!standCode) {
+      setError("Please pick an available stand on the map.");
+      return;
+    }
     setSubmitting(true);
     const form = new FormData(e.currentTarget);
     try {
@@ -18,6 +42,7 @@ export function Register() {
         tagline: String(form.get("tagline") || "") || undefined,
         description: String(form.get("description") || ""),
         category: String(form.get("category") || ""),
+        booth_code: standCode,
         website_url: String(form.get("website_url") || "") || undefined,
         logo_url: String(form.get("logo_url") || "") || undefined,
         meet_url: String(form.get("meet_url") || ""),
@@ -25,7 +50,11 @@ export function Register() {
       });
       setResult(res);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Submission failed");
+      const msg = err instanceof Error ? err.message : "Submission failed";
+      setError(msg);
+      // Someone may have grabbed the slot — refresh availability.
+      await refreshTaken();
+      setStandCode("");
     } finally {
       setSubmitting(false);
     }
@@ -43,7 +72,8 @@ export function Register() {
               <li>A moderator reviews your booth.</li>
               <li>
                 Once approved, it appears in the public hall. Until then it is{" "}
-                <span className="font-medium">not visible there yet</span> — this is normal.
+                <span className="font-medium">not visible there yet</span> — this is normal. Your stand is already
+                reserved for you.
               </li>
               <li>Use your private link below to check the status and edit anytime.</li>
             </ol>
@@ -55,22 +85,6 @@ export function Register() {
             Check status / edit my booth →
           </a>
         </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-          <p className="text-sm font-semibold text-amber-900">Save your private edit link</p>
-          <p className="mt-1 text-sm text-amber-800">
-            This link is shown only once. Anyone with it can edit your booth — keep it private.
-          </p>
-          <code className="mt-3 block overflow-x-auto rounded-lg bg-white p-3 text-xs text-slate-700">
-            {result.edit_url}
-          </code>
-          <button
-            type="button"
-            onClick={() => navigator.clipboard?.writeText(result.edit_url)}
-            className="mt-3 rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700"
-          >
-            Copy edit link
-          </button>
-        </div>
       </div>
     );
   }
@@ -79,7 +93,8 @@ export function Register() {
     <div className="mx-auto max-w-xl">
       <h1 className="text-2xl font-bold text-slate-900">List your booth</h1>
       <p className="mt-1 text-slate-600">
-        Submit your company. A moderator reviews every listing before it appears in the hall.
+        Pick your pavilion and stand, then tell us about your company. A moderator reviews every listing before it
+        appears in the hall.
       </p>
 
       {error && (
@@ -88,7 +103,69 @@ export function Register() {
         </p>
       )}
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
+      <form onSubmit={onSubmit} className="mt-6 space-y-5">
+        {/* Pavilion + stand picker */}
+        <fieldset className="rounded-xl border border-slate-200 p-4">
+          <legend className="px-1 text-sm font-semibold text-slate-700">Choose your stand</legend>
+
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">Pavilion</span>
+            <select
+              value={zone}
+              onChange={(e) => {
+                setZone(e.target.value);
+                setStandCode("");
+              }}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            >
+              {PAVILIONS.map((p) => (
+                <option key={p.zone} value={p.zone}>
+                  {p.zone}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-700">Stand</span>
+            <span className="text-xs text-slate-400">{availableInZone} available</span>
+          </div>
+          <div className="mt-2 grid grid-cols-6 gap-1.5 sm:grid-cols-8">
+            {zoneStands.map((s) => {
+              const isTaken = taken.has(s.code);
+              const isSelected = standCode === s.code;
+              return (
+                <button
+                  key={s.code}
+                  type="button"
+                  disabled={isTaken}
+                  onClick={() => setStandCode(s.code)}
+                  title={isTaken ? `${s.code} — taken` : `${s.code} — available`}
+                  className={[
+                    "rounded-md border px-1 py-1.5 text-[11px] font-medium transition",
+                    isTaken
+                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-300 line-through"
+                      : isSelected
+                        ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
+                        : "border-slate-300 bg-white text-slate-600 hover:border-indigo-400 hover:text-indigo-700",
+                  ].join(" ")}
+                >
+                  {s.code}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-xs text-slate-400">
+            {standCode ? (
+              <>
+                Selected stand: <span className="font-semibold text-indigo-700">{standCode}</span> ({zone})
+              </>
+            ) : (
+              "Pick an available (non-greyed) stand. Taken stands are locked to one company each."
+            )}
+          </p>
+        </fieldset>
+
         <Field label="Company name" name="company_name" required placeholder="Acme Inc." maxLength={120} />
         <Field label="Tagline" name="tagline" placeholder="One line about what you do" maxLength={160} />
 

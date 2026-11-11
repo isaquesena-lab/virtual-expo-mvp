@@ -8,6 +8,7 @@ import {
 import { generateEditToken, hashEditToken, timingSafeEqual } from "./lib/tokens";
 import { uniqueSlug } from "./lib/slug";
 import { verifyTurnstile } from "./lib/turnstile";
+import { STAND_BY_CODE } from "../shared/stands";
 
 /** Columns safe to expose on public endpoints (never owner_email / edit_token_hash). */
 const PUBLIC_COLUMNS = `
@@ -50,6 +51,16 @@ app.get("/api/booths", async (c) => {
   return json({ booths: results });
 });
 
+// Which stand slots are already taken (held by a non-rejected booth).
+// Returns codes only — no company or contact data.
+app.get("/api/stands", async (c) => {
+  const { results } = await c.env.DB.prepare(
+    "SELECT booth_code FROM booths WHERE booth_code IS NOT NULL AND status <> 'rejected'",
+  ).all<{ booth_code: string }>();
+  const taken = results.map((r) => r.booth_code);
+  return json({ taken });
+});
+
 // Single approved booth by slug.
 app.get("/api/booths/:slug", async (c) => {
   const slug = c.req.param("slug");
@@ -81,31 +92,58 @@ app.post("/api/booths", async (c) => {
   const human = await verifyTurnstile(c.env.TURNSTILE_SECRET, data.turnstile_token, ip);
   if (!human) return json({ error: "Anti-bot verification failed" }, 403);
 
+  // Resolve the chosen stand from the authoritative floor plan.
+  const stand = STAND_BY_CODE.get(data.booth_code);
+  if (!stand) return json({ error: "Unknown stand slot" }, 422);
+
+  // Reject early if the slot is already held by a non-rejected booth.
+  const taken = await c.env.DB.prepare(
+    "SELECT 1 FROM booths WHERE booth_code = ? AND status <> 'rejected' LIMIT 1",
+  )
+    .bind(stand.code)
+    .first();
+  if (taken) {
+    return json({ error: `Stand ${stand.code} is already taken. Please choose another.`, code: "slot_taken" }, 409);
+  }
+
   const id = crypto.randomUUID();
   const slug = uniqueSlug(data.company_name);
   const editToken = generateEditToken();
   const editTokenHash = await hashEditToken(editToken);
 
-  await c.env.DB.prepare(
-    `INSERT INTO booths
-       (id, slug, company_name, tagline, description, category,
-        logo_url, website_url, meet_url, owner_email, edit_token_hash, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
-  )
-    .bind(
-      id,
-      slug,
-      data.company_name,
-      data.tagline ?? null,
-      data.description,
-      data.category,
-      data.logo_url ?? null,
-      data.website_url ?? null,
-      data.meet_url,
-      data.owner_email,
-      editTokenHash,
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO booths
+         (id, slug, company_name, tagline, description, category,
+          zone, booth_code, position_x, position_y,
+          logo_url, website_url, meet_url, owner_email, edit_token_hash, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
     )
-    .run();
+      .bind(
+        id,
+        slug,
+        data.company_name,
+        data.tagline ?? null,
+        data.description,
+        data.category,
+        stand.zone,
+        stand.code,
+        stand.x,
+        stand.y,
+        data.logo_url ?? null,
+        data.website_url ?? null,
+        data.meet_url,
+        data.owner_email,
+        editTokenHash,
+      )
+      .run();
+  } catch (err) {
+    // Unique index race: another submission took the slot first.
+    if (String(err).includes("UNIQUE")) {
+      return json({ error: `Stand ${stand.code} was just taken. Please choose another.`, code: "slot_taken" }, 409);
+    }
+    throw err;
+  }
 
   const url = new URL(c.req.url);
   return json(

@@ -48,11 +48,18 @@ export interface CreateBoothPayload {
   tagline?: string;
   description: string;
   category: string;
+  booth_code: string;
   website_url?: string;
   logo_url?: string;
   meet_url: string;
   owner_email: string;
   turnstile_token?: string;
+}
+
+export async function getTakenStands(): Promise<string[]> {
+  const res = await fetch("/api/stands");
+  const data = await parse<{ taken: string[] }>(res);
+  return data.taken;
 }
 
 export interface CreateBoothResult {
