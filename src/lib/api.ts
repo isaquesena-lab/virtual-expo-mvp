@@ -73,6 +73,14 @@ export async function createBooth(payload: CreateBoothPayload): Promise<CreateBo
   return parse<CreateBoothResult>(res);
 }
 
+export async function getManagedBooth(id: string, token: string): Promise<Booth & { owner_email: string }> {
+  const res = await fetch(`/api/booths/${encodeURIComponent(id)}/manage`, {
+    headers: { "x-edit-token": token },
+  });
+  const data = await parse<{ booth: Booth & { owner_email: string } }>(res);
+  return data.booth;
+}
+
 export async function updateBooth(
   id: string,
   token: string,

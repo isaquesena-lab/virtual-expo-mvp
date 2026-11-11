@@ -122,6 +122,27 @@ app.post("/api/booths", async (c) => {
   );
 });
 
+// Owner view of their own booth (any status) using the capability token.
+app.get("/api/booths/:id/manage", async (c) => {
+  const id = c.req.param("id");
+  const token = c.req.header("x-edit-token") ?? "";
+  if (!token) return json({ error: "Missing edit token" }, 401);
+
+  const row = await c.env.DB.prepare(
+    `SELECT ${PUBLIC_COLUMNS}, owner_email, edit_token_hash FROM booths WHERE id = ?`,
+  )
+    .bind(id)
+    .first<Record<string, unknown> & { edit_token_hash: string }>();
+  if (!row) return json({ error: "Booth not found" }, 404);
+
+  const provided = await hashEditToken(token);
+  if (!timingSafeEqual(provided, row.edit_token_hash)) {
+    return json({ error: "Invalid edit token" }, 403);
+  }
+  const { edit_token_hash: _omit, ...booth } = row;
+  return json({ booth });
+});
+
 // Owner edit using the capability token (header `x-edit-token`).
 app.patch("/api/booths/:id", async (c) => {
   const id = c.req.param("id");

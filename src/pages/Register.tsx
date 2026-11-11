@@ -37,6 +37,23 @@ export function Register() {
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
           <h1 className="text-lg font-semibold text-emerald-900">Submission received 🎉</h1>
           <p className="mt-1 text-sm text-emerald-800">{result.message}</p>
+          <div className="mt-3 rounded-lg bg-white/70 p-3 text-sm text-emerald-900">
+            <p className="font-medium">What happens next</p>
+            <ol className="mt-1 list-decimal space-y-0.5 pl-5">
+              <li>A moderator reviews your booth.</li>
+              <li>
+                Once approved, it appears in the public hall. Until then it is{" "}
+                <span className="font-medium">not visible there yet</span> — this is normal.
+              </li>
+              <li>Use your private link below to check the status and edit anytime.</li>
+            </ol>
+          </div>
+          <a
+            href={result.edit_url}
+            className="mt-3 inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          >
+            Check status / edit my booth →
+          </a>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
           <p className="text-sm font-semibold text-amber-900">Save your private edit link</p>
