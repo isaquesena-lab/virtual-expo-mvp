@@ -146,6 +146,10 @@ export function EditBooth() {
           Open the private edit link you received when submitting your booth (it ends with
           <code className="mx-1 rounded bg-white/10 px-1">#token=…</code>).
         </p>
+        <p className="mt-3 text-sm text-slate-500">
+          Lost it? Contact the moderators from the e-mail address you registered with and ask for a new edit link.
+          The old link stops working when a new one is issued.
+        </p>
       </div>
     );
   }
@@ -203,7 +207,10 @@ export function EditBooth() {
       <div className="mx-auto max-w-xl py-12 text-center">
         <h1 className="text-xl font-semibold text-slate-100">Couldn&apos;t open this booth</h1>
         <p className="mt-2 text-slate-400">{loadError}</p>
-        <p className="mt-1 text-sm text-slate-500">Check that your edit link is complete and correct.</p>
+        <p className="mt-1 text-sm text-slate-500">
+          Check that your edit link is complete and correct. If you lost it, or a moderator issued you a new one, the
+          old link no longer works: ask the moderators (from your registered e-mail) for a new link.
+        </p>
       </div>
     );
 
