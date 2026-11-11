@@ -189,3 +189,21 @@ export async function goOffline(id: string, token: string): Promise<void> {
   });
   await parse<{ live: boolean }>(res);
 }
+
+/** keepalive lets this finish while the tab is closing. */
+export function goOffline(id: string, token: string): Promise<Response> {
+  return fetch(`/api/booths/${encodeURIComponent(id)}/live`, {
+    method: "DELETE",
+    headers: { "x-edit-token": token },
+    keepalive: true,
+  });
+}
+
+/** Moderator: replace a booth's edit link. The old link stops working; the new URL is shown once. */
+export async function adminIssueEditLink(token: string, id: string): Promise<{ edit_url: string; owner_email: string }> {
+  const res = await fetch(`/api/admin/booths/${encodeURIComponent(id)}/edit-link`, {
+    method: "POST",
+    headers: { "x-admin-token": token.trim() },
+  });
+  return parse<{ edit_url: string; owner_email: string }>(res);
+}

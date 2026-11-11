@@ -22,6 +22,8 @@ export interface Booth {
   is_live: number;
   /** Unix seconds; only returned to the owner (manage endpoint). */
   live_until?: number | null;
+  /** Only present in the moderator view. */
+  owner_email?: string;
 }
 
 /** Keep in sync with worker/lib/validation.ts CATEGORIES. */

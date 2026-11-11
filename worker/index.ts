@@ -424,6 +424,25 @@ admin.get("/booths", async (c) => {
   return json({ booths: results });
 });
 
+// Issue a replacement edit link for an exhibitor who lost theirs. The previous link stops
+// working immediately. The new token is returned once (only its hash is stored), so the
+// moderator must pass it on; verify the requester controls owner_email first.
+admin.post("/booths/:id/edit-link", async (c) => {
+  const id = c.req.param("id");
+  const row = await c.env.DB.prepare("SELECT id, owner_email FROM booths WHERE id = ?")
+    .bind(id)
+    .first<{ id: string; owner_email: string }>();
+  if (!row) return json({ error: "Booth not found" }, 404);
+
+  const token = generateEditToken();
+  const hash = await hashEditToken(token);
+  await c.env.DB.prepare("UPDATE booths SET edit_token_hash = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2")
+    .bind(hash, id)
+    .run();
+  const origin = new URL(c.req.url).origin;
+  return json({ edit_url: `${origin}/edit/${id}#token=${token}`, owner_email: row.owner_email });
+});
+
 // Approve / reject / hide, and place booths on the map.
 admin.patch("/booths/:id", async (c) => {
   const id = c.req.param("id");
